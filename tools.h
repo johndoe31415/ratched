@@ -27,6 +27,7 @@
 #include <stdbool.h>
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
+bool select_read(int fd, double timeout_secs);
 bool pathtok(const char *path, bool (*callback)(const char *path, void *arg), void *arg);
 bool makedirs(const char *path);
 bool strxcat(char *dest, int bufsize, ...);

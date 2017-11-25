@@ -30,6 +30,23 @@
 #include "logging.h"
 #include "tools.h"
 
+bool select_read(int fd, double timeout_secs) {
+	fd_set read_fds;
+	FD_ZERO(&read_fds);
+	FD_SET(fd, &read_fds);
+
+	int usecs = (int)(timeout_secs * 1e6);
+	struct timeval timeout = {
+		.tv_sec = usecs / 1000000,
+		.tv_usec = usecs % 1000000,
+	};
+	int result = select(fd + 1, &read_fds, NULL, NULL, &timeout);
+	if (result == -1) {
+		logmsg(LLVL_ERROR, "select(2) of FD %d failed: %s", fd, strerror(errno));
+	}
+	return result == 1;
+}
+
 bool pathtok(const char *path, bool (*callback)(const char *path, void *arg), void *arg) {
 	char *strcopy = strdup(path);
 	if (!strcopy) {

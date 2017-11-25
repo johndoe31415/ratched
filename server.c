@@ -62,55 +62,6 @@ struct client_thread_data_t {
 	struct multithread_dumper_t *mtdump;
 };
 
-#if 0
-static void determine_interception(char *hostname, uint32_t ipv4_nbo, struct interception_decision_t *decision) {
-	memset(decision, 0, sizeof(struct interception_decision_t));
-	if (hostname[0] == 0) {
-		/* Empty string */
-		hostname = NULL;
-	}
-
-	strtolower(hostname);
-	const struct intercept_entry_t* intercept_entry = pgmopts_get_intercept_entry(hostname);
-
-	if (!intercept_entry) {
-		/* Default client */
-		logmsg(LLVL_DEBUG, "Connection to %s (" PRI_IPv4 ") considered a default client.", hostname ? hostname : "[no SNI]", FMT_IPv4(ipv4_nbo));
-		decision->do_intercept = pgm_options->default_client.do_intercept;
-		if (decision->do_intercept) {
-			decision->client_certificate.request = pgm_options->default_client.client_certificate.request;
-		}
-	} else {
-		logmsg(LLVL_DEBUG, "Connection to %s (" PRI_IPv4 ") has a interception entry in the database.", hostname ? hostname : "[no SNI]", FMT_IPv4(ipv4_nbo));
-		decision->do_intercept = intercept_entry->do_intercept;
-		if (decision->do_intercept) {
-			decision->client_certificate.request = intercept_entry->client_certificate.request;
-			/* TODO: Read client cert! */
-		}
-	 }
-
-	if (decision->do_intercept) {
-	}
-}
-#endif
-
-static bool select_read(int fd, double timeout_secs) {
-	fd_set read_fds;
-	FD_ZERO(&read_fds);
-	FD_SET(fd, &read_fds);
-
-	int usecs = (int)(timeout_secs * 1e6);
-	struct timeval timeout = {
-		.tv_sec = usecs / 1000000,
-		.tv_usec = usecs % 1000000,
-	};
-	int result = select(fd + 1, &read_fds, NULL, NULL, &timeout);
-	if (result == -1) {
-		logmsg(LLVL_ERROR, "select(2) of FD %d failed: %s", fd, strerror(errno));
-	}
-	return result == 1;
-}
-
 static void client_thread_fnc(void *vctx) {
 	struct client_thread_data_t *ctx = (struct client_thread_data_t*)vctx;
 
