@@ -44,12 +44,17 @@ enum logflag_t {
 	FLAG_OPENSSL_DUMP_X509_CERT_TEXT = (1 << 3),
 };
 
+#define logmsg(lvl, msg, ...)					logmsg_src((lvl), __FILE__, __LINE__, (msg), ##__VA_ARGS__)
+#define logmsgext(lvl, flags, msg, ...)			logmsgext_src((lvl), __FILE__, __LINE__, (flags), (msg), ##__VA_ARGS__)
+#define logmsgarg(lvl, flags, arg, msg, ...)	logmsgext_src((lvl), __FILE__, __LINE__, (flags), (arg), (msg), ##__VA_ARGS__)
+#define log_cert(lvl, crt, msg)					log_cert_src((lvl), __FILE__, __LINE__, (crt), (msg))
+
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
 bool open_logfile(const char *filename);
-void  __attribute__ ((format (printf, 2, 3))) logmsg(enum loglvl_t lvl, const char *msg, ...);
-void  __attribute__ ((format (printf, 3, 4))) logmsgext(enum loglvl_t lvl, unsigned int flags, const char *msg, ...);
-void  __attribute__ ((format (printf, 4, 5))) logmsgarg(enum loglvl_t lvl, unsigned int flags, void *arg, const char *msg, ...);
-void log_cert(enum loglvl_t lvl, X509 *crt, const char *msg);
+void  __attribute__ ((format (printf, 4, 5))) logmsg_src(enum loglvl_t lvl, const char *src_file, unsigned int src_lineno, const char *msg, ...);
+void  __attribute__ ((format (printf, 5, 6))) logmsgext_src(enum loglvl_t lvl, const char *src_file, unsigned int src_lineno, unsigned int flags, const char *msg, ...);
+void  __attribute__ ((format (printf, 6, 7))) logmsgarg_src(enum loglvl_t lvl, const char *src_file, unsigned int src_lineno, unsigned int flags, void *arg, const char *msg, ...);
+void log_cert_src(enum loglvl_t lvl, const char *src_file, unsigned int src_lineno, X509 *crt, const char *msg);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif

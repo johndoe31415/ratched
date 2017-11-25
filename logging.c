@@ -78,15 +78,15 @@ bool open_logfile(const char *filename) {
 	return true;
 }
 
-static void print_log_prefix_str(const char *lvlstr) {
+static void print_log_prefix(enum loglvl_t lvl, const char *src_file, unsigned int src_lineno) {
 	char datetime[32];
 	log_gettime(datetime);
-	fprintf(logfile, "%s [%s] ", datetime, lvlstr);
-}
-
-static void print_log_prefix(enum loglvl_t lvl) {
 	const char *loglvl_str = (lvl < LLVL_LAST) ? loglevels[lvl] : "?";
-	print_log_prefix_str(loglvl_str);
+
+	fprintf(logfile, "%s [%s] ", datetime, loglvl_str);
+	if (lvl >= LLVL_DEBUG) {
+		fprintf(logfile, "%s:%d ", src_file, src_lineno);
+	}
 }
 
 static int error_print_callback(const char *str, size_t len, void *u) {
@@ -114,13 +114,13 @@ static void ext_log_callback(unsigned int flags, void *arg) {
 	}
 }
 
-static void logmsg_cb(enum loglvl_t lvl, void (*log_cb)(unsigned int flags, void *arg), unsigned int cb_flags, void *cb_arg, const char *msg, va_list ap) {
+static void logmsg_cb(enum loglvl_t lvl, const char *src_file, unsigned int src_lineno, void (*log_cb)(unsigned int flags, void *arg), unsigned int cb_flags, void *cb_arg, const char *msg, va_list ap) {
 	if (lvl > pgm_options->log.level) {
 		return;
 	}
 
 	log_lock();
-	print_log_prefix(lvl);
+	print_log_prefix(lvl, src_file, src_lineno);
 	vfprintf(logfile, msg, ap);
 	va_end(ap);
 	if (log_cb) {
@@ -133,31 +133,31 @@ static void logmsg_cb(enum loglvl_t lvl, void (*log_cb)(unsigned int flags, void
 	log_unlock();
 }
 
-void  __attribute__ ((format (printf, 2, 3))) logmsg(enum loglvl_t lvl, const char *msg, ...) {
+void  __attribute__ ((format (printf, 4, 5))) logmsg_src(enum loglvl_t lvl, const char *src_file, unsigned int src_lineno, const char *msg, ...) {
 	va_list ap;
 	va_start(ap, msg);
-	logmsg_cb(lvl, NULL, 0, NULL, msg, ap);
+	logmsg_cb(lvl, src_file, src_lineno, NULL, 0, NULL, msg, ap);
 	va_end(ap);
 }
 
-void  __attribute__ ((format (printf, 3, 4))) logmsgext(enum loglvl_t lvl, unsigned int flags, const char *msg, ...) {
+void  __attribute__ ((format (printf, 5, 6))) logmsgext_src(enum loglvl_t lvl, const char *src_file, unsigned int src_lineno, unsigned int flags, const char *msg, ...) {
 	va_list ap;
 	va_start(ap, msg);
-	logmsg_cb(lvl, ext_log_callback, flags, NULL, msg, ap);
+	logmsg_cb(lvl, src_file, src_lineno, ext_log_callback, flags, NULL, msg, ap);
 	va_end(ap);
 }
 
-void  __attribute__ ((format (printf, 4, 5))) logmsgarg(enum loglvl_t lvl, unsigned int flags, void *arg, const char *msg, ...) {
+void  __attribute__ ((format (printf, 6, 7))) logmsgarg_src(enum loglvl_t lvl, const char *src_file, unsigned int src_lineno, unsigned int flags, void *arg, const char *msg, ...) {
 	va_list ap;
 	va_start(ap, msg);
-	logmsg_cb(lvl, ext_log_callback, flags, arg, msg, ap);
+	logmsg_cb(lvl, src_file, src_lineno, ext_log_callback, flags, arg, msg, ap);
 	va_end(ap);
 }
 
-void log_cert(enum loglvl_t lvl, X509 *crt, const char *msg) {
+void log_cert_src(enum loglvl_t lvl, const char *src_file, unsigned int src_lineno, X509 *crt, const char *msg) {
 	unsigned int flags = FLAG_OPENSSL_DUMP_X509_CERT_SUBJECT | FLAG_OPENSSL_DUMP_X509_CERT_PEM;
 	if (pgm_options->log.level >= LLVL_TRACE) {
 		flags |= FLAG_OPENSSL_DUMP_X509_CERT_TEXT;
 	}
-	logmsgarg(lvl, flags, crt, "%s", msg);
+	logmsgarg_src(lvl, src_file, src_lineno, flags, crt, "%s", msg);
 }

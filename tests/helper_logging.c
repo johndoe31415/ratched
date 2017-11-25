@@ -26,7 +26,7 @@
 
 #include "logging.h"
 
-void logmsg(enum loglvl_t lvl, const char *msg, ...) {
+void logmsg_src(enum loglvl_t lvl, const char *src_file, unsigned int src_lineno, const char *msg, ...) {
 	va_list ap;
 	va_start(ap, msg);
 	vfprintf(stderr, msg, ap);
@@ -34,7 +34,7 @@ void logmsg(enum loglvl_t lvl, const char *msg, ...) {
 	fprintf(stderr, "\n");
 }
 
-void logmsgext(enum loglvl_t lvl, unsigned int flags, const char *msg, ...) {
+void logmsgext_src(enum loglvl_t lvl, const char *src_file, unsigned int src_lineno, unsigned int flags, const char *msg, ...) {
 	va_list ap;
 	va_start(ap, msg);
 	vfprintf(stderr, msg, ap);
@@ -42,6 +42,6 @@ void logmsgext(enum loglvl_t lvl, unsigned int flags, const char *msg, ...) {
 	fprintf(stderr, "\n");
 }
 
-void log_cert(enum loglvl_t lvl, X509 *crt, const char *msg) {
+void log_cert_src(enum loglvl_t lvl, const char *src_file, unsigned int src_lineno, X509 *crt, const char *msg) {
 
 }
