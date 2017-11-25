@@ -12,7 +12,7 @@ ifneq ($(USER),travis)
 # correctly. ABORTING."), leading to a broken build. Therefore we do not run
 # sanitizers on Travis.
 CFLAGS += -pie -fPIE -fsanitize=address -fsanitize=undefined -fsanitize=leak
-
+else
 # Ignore gcc bug #53119 for travis' old gcc version.
 CFLAGS += -Wno-missing-braces
 endif
