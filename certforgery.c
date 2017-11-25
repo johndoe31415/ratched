@@ -71,7 +71,12 @@ static struct server_certificate_t* get_server_certificate(const char *hostname,
 }
 
 static struct server_certificate_t* add_server_certificate(const char *hostname, uint32_t ipv4_nbo, X509 *cert) {
-	server_certificates = realloc(server_certificates, sizeof(struct server_certificate_t) * (server_certificate_cnt + 1));
+	struct server_certificate_t *new_server_certificates = realloc(server_certificates, sizeof(struct server_certificate_t) * (server_certificate_cnt + 1));
+	if (!new_server_certificates) {
+		logmsg(LLVL_FATAL, "Cannot realloc(3) server_certificates: %s", strerror(errno));
+		return NULL;
+	}
+	server_certificates = new_server_certificates;
 	memset(&server_certificates[server_certificate_cnt], 0, sizeof(struct server_certificate_t));
 	if (hostname) {
 		server_certificates[server_certificate_cnt].hostname = strdup(hostname);
@@ -236,6 +241,10 @@ X509 *forge_certificate_for_server(const char *hostname, uint32_t ipv4_nbo) {
 		X509 *cert = openssl_create_certificate(&certspec);
 		if (cert) {
 			entry = add_server_certificate(hostname, ipv4_nbo, cert);
+			if (!entry) {
+				logmsg(LLVL_ERROR, "Failed to add server certificate for %s to database.", hostname);
+				return NULL;
+			}
 			if (pgm_options->dump_certificates) {
 				log_cert(LLVL_DEBUG, entry->certificate, "Created forged server certificate");
 			}
