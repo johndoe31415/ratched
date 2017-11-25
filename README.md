@@ -12,16 +12,17 @@ The thing that sets it apart from other MitM software is the following:
 
   1. ratched does not intercept traffic indiscriminately. In particular, it
 	 first waits for the TLS client to send its ClientHello so that ratched can
-parse it and decide by the Server Name Indication TLS extension (SNI) if the
-target should be intercepted or not. This is particularly useful when you have
-virtual hosting, but only want to intercept connections to a specific hostname.
+	 parse it and decide by the Server Name Indication TLS extension (SNI) if
+	 the target should be intercepted or not. This is particularly useful when
+	 you have virtual hosting, but only want to intercept connections to a
+     specific hostname.
 
   2. ratched is not intended to sniff passwords, but only dumps the traffic
-	 into a PCAPNG file. The PCAPNG file format was chosen because it allows for
-     annotation of connections with comments (in particular, which hostname was indicated
-     in the SNI extension) and also allows name resolution information to be
-     embedded in the capture file (again, to map the target IP address to the SNI
-     extension's hostname)
+	 into a PCAPNG file. The PCAPNG file format was chosen because it allows
+	 for annotation of connections with comments (in particular, which hostname
+	 was indicated in the SNI extension) and also allows name resolution
+	 information to be embedded in the capture file (again, to map the target
+     IP address to the SNI extension's hostname)
 
 # Setup
 Once ratched is listening on the routing machine (in the example, on port
