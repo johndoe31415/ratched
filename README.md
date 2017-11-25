@@ -216,7 +216,7 @@ examples:
 ```
 
 # Naming
-The name "ratched" alludes to Nurse Ratched of "One Flew Over The Cuckoo's
+The name "ratched" alludes to nurse Ratched of "One Flew Over The Cuckoo's
 Nest". If you use the tool to spy on people, you're a complete douchebag and
 abusing your power. You should watch the movie. Please use ratched responsibly
 to *increase* security of our infrastructure, not undermine it. TLS
