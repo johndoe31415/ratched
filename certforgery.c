@@ -243,9 +243,8 @@ X509 *forge_certificate_for_server(const char *hostname, uint32_t ipv4_nbo) {
 			entry = add_server_certificate(hostname, ipv4_nbo, cert);
 			if (!entry) {
 				logmsg(LLVL_ERROR, "Failed to add server certificate for %s to database.", hostname);
-				return NULL;
-			}
-			if (pgm_options->dump_certificates) {
+				X509_free(cert);
+			} else if (pgm_options->dump_certificates) {
 				log_cert(LLVL_DEBUG, entry->certificate, "Created forged server certificate");
 			}
 		}
