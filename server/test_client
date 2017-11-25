@@ -1,0 +1,17 @@
+#!/bin/bash
+#
+#
+
+OPTS=""
+if [ "$1" != "" ]; then
+	HOSTNAME="$1"
+	OPTS="${OPTS} -servername ${HOSTNAME}"
+	if [ -f "client_${HOSTNAME}.crt" ]; then
+		# use client cert as well
+		OPTS="${OPTS} -cert client_${HOSTNAME}.crt -key client_${HOSTNAME}.key"
+	fi
+fi
+
+CMD="openssl s_client -connect 127.0.0.1:9999 $OPTS"
+echo "$CMD"
+$CMD
