@@ -30,7 +30,15 @@ BUILD_REVISION := $(shell git describe --abbrev=10 --dirty --always)
 CFLAGS := -O3 -Wall -D_DEFAULT_SOURCE -D_XOPEN_SOURCE=500 -Wno-unused-parameter -Wmissing-prototypes -Wstrict-prototypes -Werror=implicit-function-declaration -Werror=format -Wshadow -std=c11 -pthread
 CFLAGS += -DBUILD_TIMESTAMP_UTC='"$(BUILD_TIMESTAMP_UTC)"' -DBUILD_REVISION='"$(BUILD_REVISION)"'
 CFLAGS += -g3
+ifneq ($(USER),travis)
+# On Travis-CI, gcc does not support "undefined" and "leak" sanitizers.
+# Furthermore (and worse, actually), there seems to be a kernel < 4.12.8
+# installed which causes the address sanitizer to cause spurious fails ("Shadow
+# memory range interleaves with an existing memory mapping. ASan cannot proceed
+# correctly. ABORTING."), leading to a broken build. Therefore we do not run
+# sanitizers on Travis.
 CFLAGS += -pie -fPIE -fsanitize=address -fsanitize=undefined -fsanitize=leak
+endif
 LDFLAGS := -L/usr/local/lib -lssl -lcrypto
 
 all: ratched
