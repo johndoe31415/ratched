@@ -278,11 +278,12 @@ enum cmdline_arg_t {
 /* End of command definition enum -- auto-generated, do not edit! */
 
 static bool add_intercept_hostname(const char *hostname_params) {
-	pgm_options_rw.intercept.config = realloc(pgm_options_rw.intercept.config, sizeof(struct intercept_config_t) * (pgm_options_rw.intercept.count + 1));
-	if (!pgm_options_rw.intercept.config) {
-		perror("realloc intercept.entry");
-		exit(EXIT_FAILURE);
+	struct intercept_config_t *new_config = realloc(pgm_options_rw.intercept.config, sizeof(struct intercept_config_t) * (pgm_options_rw.intercept.count + 1));
+	if (!new_config) {
+		logmsg(LLVL_FATAL, "Failed to realloc(3) pgm_options_rw.intercept.config: %s", strerror(errno));
+		return false;
 	}
+	pgm_options_rw.intercept.config = new_config;
 
 	struct intercept_config_t *entry = &pgm_options_rw.intercept.config[pgm_options_rw.intercept.count++];
 	memset(entry, 0, sizeof(struct intercept_config_t));

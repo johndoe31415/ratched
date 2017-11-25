@@ -38,11 +38,13 @@ bool parse_stringlist(struct stringlist_t *list, const char *string, const char 
 	char *saveptr = NULL;
 	char *next;
 	while ((next = strtok_r(strcopy, delim, &saveptr)) != NULL) {
-		list->tokens = realloc(list->tokens, sizeof(char*) * (list->token_cnt + 1));
-		if (!list->tokens) {
+		char **new_tokens = realloc(list->tokens, sizeof(char*) * (list->token_cnt + 1));
+		if (!new_tokens) {
 			free(list->dupstr);
+			free(list->tokens);
 			return false;
 		}
+		list->tokens = new_tokens;
 		list->tokens[list->token_cnt] = next;
 		list->token_cnt++;
 		strcopy = NULL;

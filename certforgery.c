@@ -73,7 +73,7 @@ static struct server_certificate_t* get_server_certificate(const char *hostname,
 static struct server_certificate_t* add_server_certificate(const char *hostname, uint32_t ipv4_nbo, X509 *cert) {
 	struct server_certificate_t *new_server_certificates = realloc(server_certificates, sizeof(struct server_certificate_t) * (server_certificate_cnt + 1));
 	if (!new_server_certificates) {
-		logmsg(LLVL_FATAL, "Cannot realloc(3) server_certificates: %s", strerror(errno));
+		logmsg(LLVL_FATAL, "Failed to realloc(3) server_certificates: %s", strerror(errno));
 		return NULL;
 	}
 	server_certificates = new_server_certificates;
