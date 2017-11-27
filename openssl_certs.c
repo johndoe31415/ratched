@@ -33,40 +33,34 @@
 #include "logging.h"
 #include "openssl.h"
 #include "openssl_certs.h"
+#include "errstack.h"
 
 EVP_PKEY* openssl_create_key(const struct keyspec_t *keyspec) {
-	EVP_PKEY *pkey = EVP_PKEY_new();
+	struct errstack_t es = { 0 };
+	EVP_PKEY *pkey = errstack_add_EVP_PKEY(&es, EVP_PKEY_new());
 	if (!pkey) {
 		logmsgext(LLVL_ERROR, FLAG_OPENSSL_ERROR, "Allocating EVP_PKEY structure for %s failed.", keyspec->description);
-		return NULL;
+		return errstack_free(&es);
 	}
 	if (keyspec->cryptosystem == CRYPTOSYSTEM_RSA) {
-		RSA *rsa = RSA_new();
+		RSA *rsa = errstack_add_RSA(&es, RSA_new());
 		if (!rsa) {
 			logmsgext(LLVL_ERROR, FLAG_OPENSSL_ERROR, "Allocating RSA structure for %s failed.", keyspec->description);
-			return NULL;
+			return errstack_free(&es);
 		}
 
-		BIGNUM *e = BN_new();
+		BIGNUM *e = errstack_add_BIGNUM(&es, BN_new());
 		if (!e) {
 			logmsgext(LLVL_ERROR, FLAG_OPENSSL_ERROR, "Allocation of 'e' during RSA key generation of %s failed.", keyspec->description);
-			RSA_free(rsa);
-			EVP_PKEY_free(pkey);
-			return NULL;
+			return errstack_free(&es);
 		}
 		BN_set_word(e, 0x10001);
 		if (!RSA_generate_key_ex(rsa, keyspec->rsa.bitlength, e, NULL)) {
 			logmsgext(LLVL_ERROR, FLAG_OPENSSL_ERROR, "RSA key generation for %s failed.", keyspec->description);
-			BN_free(e);
-			RSA_free(rsa);
-			EVP_PKEY_free(pkey);
-			return NULL;
+			return errstack_free(&es);
 		}
 
 		EVP_PKEY_set1_RSA(pkey, rsa);
-
-		BN_free(e);
-		RSA_free(rsa);
 	} else if (keyspec->cryptosystem == CRYPTOSYSTEM_ECC_FP) {
 		int nid = 0;
 		if (!strcmp(keyspec->ecc_fp.curve_name, "secp192r1")) {
@@ -82,31 +76,28 @@ EVP_PKEY* openssl_create_key(const struct keyspec_t *keyspec) {
 
 		if (!nid) {
 			logmsgext(LLVL_ERROR, FLAG_OPENSSL_ERROR, "ECC key creation of %s failed: no such curve '%s'", keyspec->description, keyspec->ecc_fp.curve_name);
-			EVP_PKEY_free(pkey);
-			return NULL;
+			return errstack_free(&es);
 		}
 
-		EC_KEY *eckey = EC_KEY_new_by_curve_name(nid);
+		EC_KEY *eckey = errstack_add_EC_KEY(&es, EC_KEY_new_by_curve_name(nid));
 		if (!eckey) {
 			logmsgext(LLVL_ERROR, FLAG_OPENSSL_ERROR, "ECC key creation of %s failed.", keyspec->description);
-			EVP_PKEY_free(pkey);
-			return NULL;
+			return errstack_free(&es);
 		}
 		EC_KEY_set_asn1_flag(eckey, OPENSSL_EC_NAMED_CURVE);
 
 		if (!EC_KEY_generate_key(eckey)) {
 			logmsgext(LLVL_ERROR, FLAG_OPENSSL_ERROR, "ECC key generation of %s failed.", keyspec->description);
-			EVP_PKEY_free(pkey);
-			return NULL;
+			return errstack_free(&es);
 		}
 
 		EVP_PKEY_set1_EC_KEY(pkey, eckey);
-		EC_KEY_free(eckey);
 	} else {
 		logmsg(LLVL_ERROR, "Unknown cryptosystem requested for key generation of %s: 0x%x", keyspec->description, keyspec->cryptosystem);
-		EVP_PKEY_free(pkey);
-		return NULL;
+		return errstack_free(&es);
 	}
+
+	errstack_free_except(&es, 1);
 	return pkey;
 }
 

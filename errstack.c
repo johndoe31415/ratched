@@ -43,6 +43,18 @@ ASN1_TIME* errstack_add_ASN1_TIME(struct errstack_t *errstack, ASN1_TIME *elemen
 	return (ASN1_TIME*)errstack_add_generic(errstack, ERRSTACK_ASN1_TIME, element);
 }
 
+BIGNUM* errstack_add_BIGNUM(struct errstack_t *errstack, BIGNUM *element) {
+	return (BIGNUM*)errstack_add_generic(errstack, ERRSTACK_BIGNUM, element);
+}
+
+RSA* errstack_add_RSA(struct errstack_t *errstack, RSA *element) {
+	return (RSA*)errstack_add_generic(errstack, ERRSTACK_RSA, element);
+}
+
+EC_KEY* errstack_add_EC_KEY(struct errstack_t *errstack, EC_KEY *element) {
+	return (EC_KEY*)errstack_add_generic(errstack, ERRSTACK_EC_KEY, element);
+}
+
 
 void errstack_reset(struct errstack_t *errstack) {
 	errstack->count = 0;
@@ -80,6 +92,18 @@ static void errstack_free_element(const struct errstack_element_t *element) {
 
 		case ERRSTACK_ASN1_TIME:
 			ASN1_TIME_free((ASN1_TIME*)element->ptr);
+			break;
+
+		case ERRSTACK_BIGNUM:
+			BN_free((BIGNUM*)element->ptr);
+			break;
+
+		case ERRSTACK_RSA:
+			RSA_free((RSA*)element->ptr);
+			break;
+
+		case ERRSTACK_EC_KEY:
+			EC_KEY_free((EC_KEY*)element->ptr);
 			break;
 	}
 }
