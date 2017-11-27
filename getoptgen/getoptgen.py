@@ -100,6 +100,9 @@ help_page += format_example("$ ratched --keyspec ecc:secp256r1 --ocsp-uri http:/
 help_page += format_example("$ ratched --initial-read-timeout 5.0 --reject-unknown-traffic -o output.pcapng", "Wait five seconds for connecting clients to send a valid ClientHello message. If after five seconds nothing is received or if unknown (non-TLS) traffic is received, terminate the connection instead of performing unmodified forwarding.")
 
 print(help_page)
+
+markdown_help_page = "\n\n```\n" + help_page.rstrip("\n") + "\n```\n\n"
+
 help_page = help_page.rstrip("\r\n").split("\n")
 help_code = ""
 for line in help_page:
@@ -156,3 +159,5 @@ patcher.patch("help page", help_code)
 patcher.patch("command definition enum", arg_enum)
 patcher.patch("command definition", cmd_def)
 
+patcher = Patcher("../README.md", filetype = "markdown")
+patcher.patch("help page", markdown_help_page)

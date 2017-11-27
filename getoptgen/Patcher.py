@@ -23,18 +23,20 @@ import re
 
 class Patcher(object):
 	def __init__(self, filename, filetype = "c"):
-		assert(filetype in [ "c" ])
+		assert(filetype in [ "c", "markdown" ])
 		self._filename = filename
 		self._filetype = filetype
 
 	def _begin_re_str(self, key):
 		return {
-			"c":	r"/\* Begin of %s -- auto-generated, do not edit! \*/\n" % (key),
+			"c":		r"/\* Begin of %s -- auto-generated, do not edit! \*/\n" % (key),
+			"markdown":	r"\[//\]: # \(Begin of %s -- auto-generated, do not edit!\)" % (key),
 		}[self._filetype]
 
 	def _end_re_str(self, key):
 		return {
-			"c":	r"[\t ]*/\* End of %s -- auto-generated, do not edit! \*/" % (key),
+			"c":		r"[\t ]*/\* End of %s -- auto-generated, do not edit! \*/" % (key),
+			"markdown":	r"\[//\]: # \(End of %s -- auto-generated, do not edit!\)" % (key),
 		}[self._filetype]
 
 	def regex(self, key):
