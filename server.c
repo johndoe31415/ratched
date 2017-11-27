@@ -121,6 +121,8 @@ static void client_thread_fnc(void *vctx) {
 				 * server certificate */
 				server_config.key = get_tls_server_key();
 				server_config.cert = forge_certificate_for_server(client_hello.server_name_indication, ctx->destination_ip_nbo);
+				server_config.ocsp_responder.cert = get_forged_root_certificate();
+				server_config.ocsp_responder.key = get_forged_root_key();
 			}
 			struct tls_connection_request_t server_request = {
 				.is_server = true,

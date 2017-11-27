@@ -21,35 +21,15 @@
  *	Johannes Bauer <JohannesBauer@gmx.de>
 **/
 
-#ifndef __CERTFORGERY_H__
-#define __CERTFORGERY_H__
+#ifndef __OCSP_RESPONSE_H__
+#define __OCSP_RESPONSE_H__
 
-#include <stdint.h>
 #include <stdbool.h>
-#include <openssl/x509.h>
-#include <openssl/evp.h>
-
-struct certforgery_data_t {
-	X509 *root_ca_cert;
-	EVP_PKEY *root_ca_key;
-	EVP_PKEY *tls_server_key;
-};
-
-struct certificate_runtime_parameters_t {
-	X509 *client_certificate;
-	EVP_PKEY *client_key;
-	STACK_OF(X509) *client_chain;
-};
+#include <openssl/ocsp.h>
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
-struct server_certificate_t;
-bool certforgery_init(void);
-X509 *get_forged_root_certificate(void);
-EVP_PKEY *get_forged_root_key(void);
-EVP_PKEY *get_tls_server_key(void);
-EVP_PKEY *get_tls_client_key(void);
-X509 *forge_certificate_for_server(const char *hostname, uint32_t ipv4_nbo);
-void certforgery_deinit(void);
+OCSP_RESPONSE *create_ocsp_response(X509 *subject_crt, X509 *issuer_crt, EVP_PKEY *issuer_key);
+bool serialize_ocsp_response(OCSP_RESPONSE *ocsp_response, uint8_t **data, int *length);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif

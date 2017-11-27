@@ -21,35 +21,43 @@
  *	Johannes Bauer <JohannesBauer@gmx.de>
 **/
 
-#ifndef __CERTFORGERY_H__
-#define __CERTFORGERY_H__
+#include <stdio.h>
+#include "testbed.h"
+#include <openssl.h>
+#include <openssl_certs.h>
+#include <ocsp_response.h>
 
-#include <stdint.h>
-#include <stdbool.h>
-#include <openssl/x509.h>
-#include <openssl/evp.h>
+static void test_ocsp(void) {
+	subtest_start();
+	openssl_init();
 
-struct certforgery_data_t {
-	X509 *root_ca_cert;
-	EVP_PKEY *root_ca_key;
-	EVP_PKEY *tls_server_key;
-};
+	X509 *cert = openssl_load_cert("local.crt", "root", false);
+	EVP_PKEY *key = openssl_load_key("local.key", "root", false);
+	test_assert(cert);
+	test_assert(key);
 
-struct certificate_runtime_parameters_t {
-	X509 *client_certificate;
-	EVP_PKEY *client_key;
-	STACK_OF(X509) *client_chain;
-};
+	OCSP_RESPONSE *response = create_ocsp_response(cert, cert, key);
+	test_assert(response);
 
-/*************** AUTO GENERATED SECTION FOLLOWS ***************/
-struct server_certificate_t;
-bool certforgery_init(void);
-X509 *get_forged_root_certificate(void);
-EVP_PKEY *get_forged_root_key(void);
-EVP_PKEY *get_tls_server_key(void);
-EVP_PKEY *get_tls_client_key(void);
-X509 *forge_certificate_for_server(const char *hostname, uint32_t ipv4_nbo);
-void certforgery_deinit(void);
-/***************  AUTO GENERATED SECTION ENDS   ***************/
+	if (response) {
+		BIO *bio = BIO_new_fp(stderr, BIO_NOCLOSE);
+		OCSP_RESPONSE_print(bio, response, 0);
+		fprintf(stderr, "\n");
+		BIO_free(bio);
+	}
 
-#endif
+	EVP_PKEY_free(key);
+	X509_free(cert);
+
+	OCSP_RESPONSE_free(response);
+	openssl_deinit();
+	subtest_finished();
+}
+
+int main(int argc, char **argv) {
+	test_start(argc, argv);
+	test_ocsp();
+	test_finished();
+	return 0;
+}
+

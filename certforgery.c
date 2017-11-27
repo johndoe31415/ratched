@@ -199,6 +199,10 @@ X509 *get_forged_root_certificate(void) {
 	return root_ca;
 }
 
+EVP_PKEY *get_forged_root_key(void) {
+	return root_ca_key;
+}
+
 EVP_PKEY *get_tls_server_key(void) {
 	EVP_PKEY_up_ref(server_key);
 	return server_key;

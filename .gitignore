@@ -3,3 +3,4 @@ ratched
 __pycache__
 
 .*.swp
+hexdump_????.bin

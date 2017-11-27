@@ -1,13 +1,14 @@
 tests.log
 
 test_keyvaluelist
+test_ocsp
 test_openssl_certs
 test_openssl_clienthello
+test_openssl_tls
 test_parse
 test_pcapng
 test_stringlist
 test_tcpip
-test_tls
 test_tools
 
 mantest_openssl_sclient

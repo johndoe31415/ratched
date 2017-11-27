@@ -53,9 +53,9 @@ usage: ratched [-c path] [-f hostname:port] [--single-shot] [--dump-certs]
                [--default-client-cert certfile:keyfile[:cafile]]
                [--mark-forged-certificates] [--no-recalculate-keyids]
                [--daemonize] [--logfile file] [--flush-logs] [--crl-uri uri]
-               [--ocsp-uri uri] [-l hostname:port]
-               [-i hostname[,key=value,...]] [--pcap-comment comment]
-               [-o filename] [-v]
+               [--ocsp-uri uri] [--write-memdumps-into-files]
+               [-l hostname:port] [-i hostname[,key=value,...]]
+               [--pcap-comment comment] [-o filename] [-v]
 
 ratched - TLS connection router that performs a man-in-the-middle attack
 
@@ -139,6 +139,11 @@ optional arguments:
   --ocsp-uri uri        Encode the given URI into the Authority Info Access
                         X.509 extension of server certificates as the OCSP
                         responder URI.
+  --write-memdumps-into-files
+                        When dumping a piece of memory in the log, also output
+                        its binary equivalent into a file called
+                        hexdump_####.bin, where #### is an ascending number.
+                        Useful for debugging of internal data structures.
   -l hostname:port, --listen hostname:port
                         Specify the address and port that ratched is listening
                         on. Defaults to 127.0.0.1:9999.

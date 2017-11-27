@@ -27,6 +27,7 @@
 #include "logging.h"
 #include "openssl.h"
 #include "openssl_tls.h"
+#include "ocsp_response.h"
 
 static long biocb(struct bio_st *bio, int oper, const char *argp, int len, long argi, long argl) {
 //	fprintf(stderr, "BIO %p: oper 0x%x argp %p len %d i/l %ld %ld\n", bio, oper, argp, len, argi, argl);
@@ -67,6 +68,29 @@ static int cert_verify_callback(X509_STORE_CTX *x509_store_ctx, void *arg) {
 	}
 
 	return 1;
+}
+
+static int ocsp_status_request_callback(SSL *ssl, void *arg) {
+	struct tls_endpoint_config_t *config = (struct tls_endpoint_config_t*)arg;
+	if (config->ocsp_responder.cert && config->ocsp_responder.key) {
+		OCSP_RESPONSE *response = create_ocsp_response(config->cert, config->ocsp_responder.cert, config->ocsp_responder.key);
+		if (response) {
+			uint8_t *serialized_ticket;
+			int serialized_ticket_length;
+			if (serialize_ocsp_response(response, &serialized_ticket, &serialized_ticket_length)) {
+				/* Ticket is cleaned up by SSL_free */
+				SSL_set_tlsext_status_ocsp_resp(ssl, serialized_ticket, serialized_ticket_length);
+			} else {
+				logmsg(LLVL_ERROR, "Failed to serialize OCSP ticket, not adding to SSL connection.");
+			}
+			OCSP_RESPONSE_free(response);
+		} else {
+			logmsg(LLVL_DEBUG, "Received status request by client, but could not fake OCSP response.");
+		}
+	} else {
+		logmsg(LLVL_DEBUG, "Received status request by client, but no OCSP CA registered in connection.");
+	}
+	return 0;
 }
 
 struct tls_connection_t openssl_tls_connect(const struct tls_connection_request_t *request) {
@@ -113,6 +137,20 @@ struct tls_connection_t openssl_tls_connect(const struct tls_connection_request_
 	if (request->config && request->config->chain) {
 		if (!SSL_CTX_set0_chain(sslctx, request->config->chain)) {
 			logmsgext(LLVL_ERROR, FLAG_OPENSSL_ERROR, "openssl_tls %s: SSL_CTX_set0_chain() failed.", request->is_server ? "server" : "client");
+			SSL_CTX_free(sslctx);
+			return result;
+		}
+	}
+
+	/* If a server, set a status request callback as well */
+	if (request->is_server) {
+		if (!SSL_CTX_set_tlsext_status_cb(sslctx, ocsp_status_request_callback)) {
+			logmsgext(LLVL_ERROR, FLAG_OPENSSL_ERROR, "openssl_tls %s: SSL_CTX_set_tlsext_status_cb() failed.", request->is_server ? "server" : "client");
+			SSL_CTX_free(sslctx);
+			return result;
+		}
+		if (!SSL_CTX_set_tlsext_status_arg(sslctx, request->config)) {
+			logmsgext(LLVL_ERROR, FLAG_OPENSSL_ERROR, "openssl_tls %s: SSL_CTX_set_tlsext_status_arg() failed.", request->is_server ? "server" : "client");
 			SSL_CTX_free(sslctx);
 			return result;
 		}

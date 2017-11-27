@@ -59,6 +59,7 @@ struct pgmopts_t {
 	double initial_read_timeout;
 	bool reject_unknown_traffic;
 	bool mark_forged_certificates;
+	bool write_memdumps_into_files;
 	const char *crl_uri, *ocsp_responder_uri;
 	struct intercept_config_t default_client;
 	bool default_recalculate_key_identifiers;

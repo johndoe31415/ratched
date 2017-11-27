@@ -71,9 +71,9 @@ void show_syntax(const char *pgmbinary) {
 	fprintf(stderr, "               [--default-client-cert certfile:keyfile[:cafile]]\n");
 	fprintf(stderr, "               [--mark-forged-certificates] [--no-recalculate-keyids]\n");
 	fprintf(stderr, "               [--daemonize] [--logfile file] [--flush-logs] [--crl-uri uri]\n");
-	fprintf(stderr, "               [--ocsp-uri uri] [-l hostname:port]\n");
-	fprintf(stderr, "               [-i hostname[,key=value,...]] [--pcap-comment comment]\n");
-	fprintf(stderr, "               [-o filename] [-v]\n");
+	fprintf(stderr, "               [--ocsp-uri uri] [--write-memdumps-into-files]\n");
+	fprintf(stderr, "               [-l hostname:port] [-i hostname[,key=value,...]]\n");
+	fprintf(stderr, "               [--pcap-comment comment] [-o filename] [-v]\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "ratched - TLS connection router that performs a man-in-the-middle attack\n");
 	fprintf(stderr, "\n");
@@ -157,6 +157,11 @@ void show_syntax(const char *pgmbinary) {
 	fprintf(stderr, "  --ocsp-uri uri        Encode the given URI into the Authority Info Access\n");
 	fprintf(stderr, "                        X.509 extension of server certificates as the OCSP\n");
 	fprintf(stderr, "                        responder URI.\n");
+	fprintf(stderr, "  --write-memdumps-into-files\n");
+	fprintf(stderr, "                        When dumping a piece of memory in the log, also output\n");
+	fprintf(stderr, "                        its binary equivalent into a file called\n");
+	fprintf(stderr, "                        hexdump_####.bin, where #### is an ascending number.\n");
+	fprintf(stderr, "                        Useful for debugging of internal data structures.\n");
 	fprintf(stderr, "  -l hostname:port, --listen hostname:port\n");
 	fprintf(stderr, "                        Specify the address and port that ratched is listening\n");
 	fprintf(stderr, "                        on. Defaults to 127.0.0.1:9999.\n");
@@ -269,6 +274,7 @@ enum cmdline_arg_t {
 	ARG_FLUSH_LOGS,
 	ARG_CRL_URI,
 	ARG_OCSP_URI,
+	ARG_WRITE_MEMDUMPS_INTO_FILES,
 	ARG_LISTEN,
 	ARG_INTERCEPT,
 	ARG_PCAP_COMMENT,
@@ -437,6 +443,7 @@ bool parse_options(int argc, char **argv) {
 		{ "flush-logs",                  no_argument,       0, ARG_FLUSH_LOGS },
 		{ "crl-uri",                     required_argument, 0, ARG_CRL_URI },
 		{ "ocsp-uri",                    required_argument, 0, ARG_OCSP_URI },
+		{ "write-memdumps-into-files",   no_argument,       0, ARG_WRITE_MEMDUMPS_INTO_FILES },
 		{ "listen",                      required_argument, 0, ARG_LISTEN },
 		{ "intercept",                   required_argument, 0, ARG_INTERCEPT },
 		{ "pcap-comment",                required_argument, 0, ARG_PCAP_COMMENT },
@@ -535,6 +542,10 @@ bool parse_options(int argc, char **argv) {
 
 			case ARG_OCSP_URI:
 				pgm_options_rw.ocsp_responder_uri = optarg;
+				break;
+
+			case ARG_WRITE_MEMDUMPS_INTO_FILES:
+				pgm_options_rw.write_memdumps_into_files = true;
 				break;
 
 			case ARG_LISTEN_SHORT:

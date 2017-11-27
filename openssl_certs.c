@@ -465,7 +465,7 @@ bool init_tls_endpoint_config(struct tls_endpoint_config_t *config, const char *
 void free_tls_endpoint_config(struct tls_endpoint_config_t *config) {
 	X509_free(config->cert);
 	EVP_PKEY_free(config->key);
-	sk_X509_free(config->chain);
+	sk_X509_pop_free(config->chain, X509_free);
 	config->cert = NULL;
 	config->key = NULL;
 	config->chain = NULL;

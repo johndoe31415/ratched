@@ -56,6 +56,10 @@ struct tls_endpoint_config_t {
 	X509 *cert;
 	EVP_PKEY *key;
 	STACK_OF(X509) *chain;
+	struct {
+		X509 *cert;
+		EVP_PKEY *key;
+	} ocsp_responder;
 };
 
 struct tls_endpoint_cert_source_t {

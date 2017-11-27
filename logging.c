@@ -128,8 +128,24 @@ static void ext_log_callback(unsigned int flags, void *arg) {
 }
 
 static void hexdump_callback(unsigned int flags, void *arg) {
-	if (flags & FLAG_LOG_AFTERLINE) {
-		struct memdump_data_t *mem = (struct memdump_data_t*)arg;
+	static unsigned int hexdump_no = 0;
+	struct memdump_data_t *mem = (struct memdump_data_t*)arg;
+	if (flags & FLAG_LOG_SAMELINE) {
+		if (pgm_options->write_memdumps_into_files) {
+			hexdump_no++;
+			char filename[64];
+			snprintf(filename, sizeof(filename), "hexdump_%04d.bin", hexdump_no);
+
+			FILE *f = fopen(filename, "w");
+			if (f) {
+				fprintf(logfile, " [%s]", filename);
+				fwrite(mem->data, 1, mem->length, f);
+				fclose(f);
+			} else {
+				fprintf(logfile, " failed to open %s for writing: %s", filename, strerror(errno));
+			}
+		}
+	} else if (flags & FLAG_LOG_AFTERLINE) {
 		hexdump_data(logfile, mem->data, mem->length);
 	}
 }

@@ -4,11 +4,13 @@ OBJS := \
 	atomic.o \
 	certforgery.o \
 	daemonize.o \
+	errstack.o \
 	hexdump.o \
 	interceptdb.o \
 	ipfwd.o \
 	keyvaluelist.o \
 	logging.o \
+	ocsp_response.o \
 	openssl_certs.o \
 	openssl_clienthello.o \
 	openssl_fwd.o \
