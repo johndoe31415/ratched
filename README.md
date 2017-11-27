@@ -43,6 +43,8 @@ iptables -t nat -A PREROUTING -p tcp --dport 443 -j REDIRECT --to-ports 9999
 # Usage
 The help page should be pretty self-explanatory:
 
+[//]: # (Begin of help page -- auto-generated, do not edit!)
+
 ```
 usage: ratched [-c path] [-f hostname:port] [--single-shot] [--dump-certs]
                [--keyspec keyspec] [--initial-read-timeout secs]
@@ -217,6 +219,8 @@ examples:
       TLS) traffic is received, terminate the connection instead of performing
       unmodified forwarding.
 ```
+
+[//]: # (End of help page -- auto-generated, do not edit!)
 
 # Naming
 The name "ratched" alludes to nurse Ratched of "One Flew Over The Cuckoo's
