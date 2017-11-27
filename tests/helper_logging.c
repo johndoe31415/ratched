@@ -26,6 +26,10 @@
 
 #include "logging.h"
 
+bool loglevel_at_least(enum loglvl_t lvl) {
+	return true;
+}
+
 void logmsg_src(enum loglvl_t lvl, const char *src_file, unsigned int src_lineno, const char *msg, ...) {
 	va_list ap;
 	va_start(ap, msg);
@@ -43,5 +47,7 @@ void logmsgext_src(enum loglvl_t lvl, const char *src_file, unsigned int src_lin
 }
 
 void log_cert_src(enum loglvl_t lvl, const char *src_file, unsigned int src_lineno, X509 *crt, const char *msg) {
+}
 
+void log_memory_src(enum loglvl_t lvl, const char *src_file, unsigned int src_lineno, const void *data, unsigned int length, const char *msg, ...) {
 }

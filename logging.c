@@ -32,6 +32,12 @@
 #include <openssl/err.h>
 #include "logging.h"
 #include "pgmopts.h"
+#include "hexdump.h"
+
+struct memdump_data_t {
+	const void *data;
+	unsigned int length;
+};
 
 static pthread_mutex_t loglock = PTHREAD_MUTEX_INITIALIZER;
 static FILE *logfile;
@@ -78,13 +84,17 @@ bool open_logfile(const char *filename) {
 	return true;
 }
 
+bool loglevel_at_least(enum loglvl_t lvl) {
+	return pgm_options->log.level >= lvl;
+}
+
 static void print_log_prefix(enum loglvl_t lvl, const char *src_file, unsigned int src_lineno) {
 	char datetime[32];
 	log_gettime(datetime);
 	const char *loglvl_str = (lvl < LLVL_LAST) ? loglevels[lvl] : "?";
 
 	fprintf(logfile, "%s [%s] ", datetime, loglvl_str);
-	if (lvl >= LLVL_DEBUG) {
+	if (loglevel_at_least(LLVL_DEBUG)) {
 		fprintf(logfile, "%s:%d ", src_file, src_lineno);
 	}
 }
@@ -95,40 +105,52 @@ static int error_print_callback(const char *str, size_t len, void *u) {
 }
 
 static void ext_log_callback(unsigned int flags, void *arg) {
-	if (flags & FLAG_OPENSSL_ERROR) {
-		/* Dump out last OpenSSL error */
-		ERR_print_errors_cb(error_print_callback, NULL);
+	if (flags & FLAG_LOG_SAMELINE) {
+		if ((flags & FLAG_OPENSSL_DUMP_X509_CERT_SUBJECT) && arg) {
+			X509 *cert = (X509*)arg;
+			fprintf(logfile, " - subject: ");
+			X509_NAME_print_ex_fp(logfile, X509_get_subject_name(cert), 0, XN_FLAG_ONELINE);
+		}
+	} else {
+		if (flags & FLAG_OPENSSL_ERROR) {
+			/* Dump out last OpenSSL error */
+			ERR_print_errors_cb(error_print_callback, NULL);
+		}
+		if ((flags & FLAG_OPENSSL_DUMP_X509_CERT_TEXT) && arg) {
+			X509 *cert = (X509*)arg;
+			X509_print_fp(logfile, cert);
+		}
+		if ((flags & FLAG_OPENSSL_DUMP_X509_CERT_PEM) && arg) {
+			X509 *cert = (X509*)arg;
+			PEM_write_X509(logfile, cert);
+		}
 	}
-	if ((flags & FLAG_OPENSSL_DUMP_X509_CERT_SUBJECT) && arg) {
-		X509 *cert = (X509*)arg;
-		fprintf(logfile, " - subject: ");
-		X509_NAME_print_ex_fp(logfile, X509_get_subject_name(cert), 0, XN_FLAG_ONELINE);
-	}
-	if ((flags & FLAG_OPENSSL_DUMP_X509_CERT_TEXT) && arg) {
-		X509 *cert = (X509*)arg;
-		X509_print_fp(logfile, cert);
-	}
-	if ((flags & FLAG_OPENSSL_DUMP_X509_CERT_PEM) && arg) {
-		X509 *cert = (X509*)arg;
-		PEM_write_X509(logfile, cert);
+}
+
+static void hexdump_callback(unsigned int flags, void *arg) {
+	if (flags & FLAG_LOG_AFTERLINE) {
+		struct memdump_data_t *mem = (struct memdump_data_t*)arg;
+		hexdump_data(logfile, mem->data, mem->length);
 	}
 }
 
 static void logmsg_cb(enum loglvl_t lvl, const char *src_file, unsigned int src_lineno, void (*log_cb)(unsigned int flags, void *arg), unsigned int cb_flags, void *cb_arg, const char *msg, va_list ap) {
-	if (lvl > pgm_options->log.level) {
+	if (!loglevel_at_least(lvl)) {
 		return;
 	}
+
+	cb_flags = cb_flags & ~(FLAG_LOG_SAMELINE | FLAG_LOG_AFTERLINE);
 
 	log_lock();
 	print_log_prefix(lvl, src_file, src_lineno);
 	vfprintf(logfile, msg, ap);
 	va_end(ap);
 	if (log_cb) {
-		log_cb(cb_flags & (FLAG_OPENSSL_DUMP_X509_CERT_SUBJECT), cb_arg);
+		log_cb(cb_flags | FLAG_LOG_SAMELINE, cb_arg);
 	}
 	fprintf(logfile, "\n");
 	if (log_cb) {
-		log_cb(cb_flags & ~(FLAG_OPENSSL_DUMP_X509_CERT_SUBJECT), cb_arg);
+		log_cb(cb_flags | FLAG_LOG_AFTERLINE, cb_arg);
 	}
 	log_unlock();
 }
@@ -154,10 +176,22 @@ void  __attribute__ ((format (printf, 6, 7))) logmsgarg_src(enum loglvl_t lvl, c
 	va_end(ap);
 }
 
+void  __attribute__ ((format (printf, 6, 7))) log_memory_src(enum loglvl_t lvl, const char *src_file, unsigned int src_lineno, const void *data, unsigned int length, const char *msg, ...) {
+	struct memdump_data_t memory = {
+		.data = data,
+		.length = length,
+	};
+	va_list ap;
+	va_start(ap, msg);
+	logmsg_cb(lvl, src_file, src_lineno, hexdump_callback, 0, &memory, msg, ap);
+	va_end(ap);
+}
+
 void log_cert_src(enum loglvl_t lvl, const char *src_file, unsigned int src_lineno, X509 *crt, const char *msg) {
 	unsigned int flags = FLAG_OPENSSL_DUMP_X509_CERT_SUBJECT | FLAG_OPENSSL_DUMP_X509_CERT_PEM;
-	if (pgm_options->log.level >= LLVL_TRACE) {
+	if (loglevel_at_least(LLVL_TRACE)) {
 		flags |= FLAG_OPENSSL_DUMP_X509_CERT_TEXT;
 	}
 	logmsgarg_src(lvl, src_file, src_lineno, flags, crt, "%s", msg);
 }
+

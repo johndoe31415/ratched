@@ -50,8 +50,9 @@ static void test_clienthello_parse(void) {
 	openssl_init();
 
 	struct chello_t chello;
-	test_assert(parse_client_hello(client_hello_example, sizeof(client_hello_example), &chello));
-	test_assert_str_eq(chello.servername, "localhost");
+	test_assert(parse_client_hello(&chello, client_hello_example, sizeof(client_hello_example)));
+	test_assert_str_eq(chello.server_name_indication, "localhost");
+	free_client_hello(&chello);
 	openssl_deinit();
 	subtest_finished();
 }

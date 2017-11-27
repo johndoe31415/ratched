@@ -21,27 +21,20 @@
  *	Johannes Bauer <JohannesBauer@gmx.de>
 **/
 
-#ifndef __OPENSSL_CLIENTHELLO_H__
-#define __OPENSSL_CLIENTHELLO_H__
+#ifndef __HEXDUMP_H__
+#define __HEXDUMP_H__
 
-#include <stdint.h>
-#include <stdbool.h>
+#include <stdio.h>
 
-struct chello_t {
-	char *server_name_indication;
-	struct {
-		bool status_request;
-		bool encrypt_then_mac;
-		bool extended_master_secret;
-		bool session_ticket;
-	} present_extensions;
+struct hexdump_fmt_t {
+	unsigned int bytes_per_line;
+	unsigned int short_break;
+	unsigned int long_break;
 };
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
-struct lookup_table_element_t;
-struct callback_ctx_t;
-bool parse_client_hello(struct chello_t *result, const uint8_t *data, int length);
-void free_client_hello(struct chello_t *chello);
+void hexdump_data_fmt(FILE *f, const struct hexdump_fmt_t *fmt, const void *data, unsigned int length);
+void hexdump_data(FILE *f, const void *data, unsigned int length);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif

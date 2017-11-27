@@ -4,6 +4,7 @@ OBJS := \
 	atomic.o \
 	certforgery.o \
 	daemonize.o \
+	hexdump.o \
 	interceptdb.o \
 	ipfwd.o \
 	keyvaluelist.o \

@@ -87,8 +87,8 @@ static void client_thread_fnc(void *vctx) {
 		/* Now try to parse these bytes as a ClientHello message, if possible */
 		struct chello_t client_hello = { 0 };
 		if (bytes_read > 0) {
-			if (parse_client_hello(preliminary_data, bytes_read, &client_hello)) {
-				logmsg(LLVL_DEBUG, "Successfully parsed ClientHello message. SNI %s", client_hello.servername[0] ? client_hello.servername : "not present");
+			if (parse_client_hello(&client_hello, preliminary_data, bytes_read)) {
+				logmsg(LLVL_DEBUG, "Successfully parsed ClientHello message. SNI %s", client_hello.server_name_indication ? client_hello.server_name_indication : "not present");
 			} else {
 				logmsg(LLVL_WARN, "The %zd initial bytes couldn't be parsed as a ClientHello, treating connection as a default client.", bytes_read);
 			}
@@ -96,11 +96,7 @@ static void client_thread_fnc(void *vctx) {
 
 		/* Given all the facts, determine if and how we should intercept the
 		 * connection. Look up the entry in the interception DB */
-		const char *server_name_indication = client_hello.servername;
-		if (!*server_name_indication) {
-			server_name_indication = NULL;
-		}
-		struct intercept_entry_t *decision = interceptdb_find_entry(client_hello.servername, ctx->destination_ip_nbo);
+		struct intercept_entry_t *decision = interceptdb_find_entry(client_hello.server_name_indication, ctx->destination_ip_nbo);
 		if (!decision->do_intercept) {
 			if (pgm_options->reject_unknown_traffic) {
 				logmsg(LLVL_WARN, "Rejecting unknown traffic instead of forwarding unmodified.");
@@ -124,7 +120,7 @@ static void client_thread_fnc(void *vctx) {
 				/* No static configuration for that host, dynamically generate
 				 * server certificate */
 				server_config.key = get_tls_server_key();
-				server_config.cert = forge_certificate_for_server(server_name_indication, ctx->destination_ip_nbo);
+				server_config.cert = forge_certificate_for_server(client_hello.server_name_indication, ctx->destination_ip_nbo);
 			}
 			struct tls_connection_request_t server_request = {
 				.is_server = true,
@@ -155,7 +151,7 @@ static void client_thread_fnc(void *vctx) {
 				.is_server = false,
 				.peer_fd = connected_sd,
 				.config = &client_config,
-				.server_name_indication = server_name_indication,
+				.server_name_indication = client_hello.server_name_indication,
 			};
 			struct tls_connection_t connected_ssl = openssl_tls_connect(&client_request);
 
@@ -166,7 +162,7 @@ static void client_thread_fnc(void *vctx) {
 					.acceptor = {
 						.ip_nbo = ctx->destination_ip_nbo,
 						.port_nbo = ctx->destination_port_nbo,
-						.hostname = server_name_indication,
+						.hostname = client_hello.server_name_indication,
 					},
 					.connector = {
 						.ip_nbo = ctx->source_ip_nbo,
@@ -174,7 +170,7 @@ static void client_thread_fnc(void *vctx) {
 					},
 				};
 				char comment[256];
-				snprintf(comment, sizeof(comment), "%zd bytes ClientHello, Server Name Indication %s, " PRI_IPv4 ":%u", bytes_read, server_name_indication ? server_name_indication : "not present", FMT_IPv4(conn.acceptor.ip_nbo), ntohs(conn.acceptor.port_nbo));
+				snprintf(comment, sizeof(comment), "%zd bytes ClientHello, Server Name Indication %s, " PRI_IPv4 ":%u", bytes_read, client_hello.server_name_indication ? client_hello.server_name_indication : "not present", FMT_IPv4(conn.acceptor.ip_nbo), ntohs(conn.acceptor.port_nbo));
 				create_tcp_ip_connection(ctx->mtdump, &conn, comment);
 				tls_forward_data(accepted_ssl.ssl, connected_ssl.ssl, &conn);
 				teardown_tcp_ip_connection(&conn, false);
@@ -186,6 +182,7 @@ static void client_thread_fnc(void *vctx) {
 			SSL_free(accepted_ssl.ssl);
 			X509_free(client_config.cert);
 		}
+		free_client_hello(&client_hello);
 	}
 	close(ctx->accepted_sd);
 	close(connected_sd);

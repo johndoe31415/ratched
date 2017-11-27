@@ -25,6 +25,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
+#include <errno.h>
 #include <openssl/ssl.h>
 #include "logging.h"
 #include "openssl.h"
@@ -38,6 +39,7 @@ struct lookup_table_element_t {
 
 struct callback_ctx_t {
 	bool debug;
+	bool seen_client_hello;
 	struct chello_t *parse_result;
 };
 
@@ -100,11 +102,7 @@ static void msg_cb(int from_server, int version, int content_type, const void *v
 
 	if (ctx->debug) {
 		const char *ctypename = lookup(known_content_types, content_type);
-		fprintf(stderr, "TLS message from %s, version 0x%x, content type %d (%s) length %zu bytes: ", from_server ? "server" : "client", version, content_type, ctypename ? ctypename : "unknown", len);
-		for (int i = 0; i < len; i++) {
-			fprintf(stderr, "%02x ", data[i]);
-		}
-		fprintf(stderr, "\n");
+		log_memory(LLVL_TRACE, data, len, "TLS message from %s, version 0x%x, content type %d (%s) length %zu bytes: ", from_server ? "server" : "client", version, content_type, ctypename ? ctypename : "unknown", len);
 	}
 
 	if ((content_type != SSL3_RT_HANDSHAKE) || from_server) {
@@ -114,7 +112,7 @@ static void msg_cb(int from_server, int version, int content_type, const void *v
 
 	uint8_t message = data[0];
 	if (message == SSL3_MT_CLIENT_HELLO) {
-		ctx->parse_result->seen_client_hello = true;
+		ctx->seen_client_hello = true;
 	}
 }
 
@@ -123,11 +121,7 @@ static void msg_tlsext(SSL *ssl, int from_server, int type, const unsigned char 
 
 	if (ctx->debug) {
 		const char *extname = lookup(known_extensions, type);
-		fprintf(stderr, "TLS extension from %s, type 0x%x (%s) length %d bytes: ", from_server ? "server" : "client", type, extname ? extname : "unknown", len);
-		for (int i = 0; i < len; i++) {
-			fprintf(stderr, "%02x ", data[i]);
-		}
-		fprintf(stderr, "\n");
+		log_memory(LLVL_TRACE, data, len, "TLS extension from %s, type 0x%x (%s) length %d bytes:", from_server ? "server" : "client", type, extname ? extname : "unknown", len);
 	}
 
 	if (from_server) {
@@ -139,15 +133,27 @@ static void msg_tlsext(SSL *ssl, int from_server, int type, const unsigned char 
 		if ((data[0] == TLSEXT_NAMETYPE_host_name) && (2 + data[1] <= len)) {
 			/* Server Name Indication in ClientHello specifying the host name */
 			int hostname_len = data[1] - 3;
-			if (hostname_len > (MAX_SERVERNAME_LENGTH_BYTES - 1)) {
-				hostname_len = MAX_SERVERNAME_LENGTH_BYTES - 1;
+			logmsg(LLVL_TRACE, "Seen ClientHello TLS extension Server Name Indication (length of hostname %d bytes).", hostname_len);
+			ctx->parse_result->server_name_indication = malloc(hostname_len + 1);
+			if (!ctx->parse_result->server_name_indication) {
+				logmsg(LLVL_FATAL, "Failed to allocate %d bytes for server_name_indication: %s", hostname_len + 1, strerror(errno));
+			} else {
+				memcpy(ctx->parse_result->server_name_indication, data + 5, hostname_len);
+				ctx->parse_result->server_name_indication[hostname_len] = 0;
 			}
-			memcpy(ctx->parse_result->servername, data + 5, hostname_len);
 		}
+	} else if (type == TLSEXT_TYPE_status_request) {
+		ctx->parse_result->present_extensions.status_request = true;
+	} else if (type == TLSEXT_TYPE_encrypt_then_mac) {
+		ctx->parse_result->present_extensions.encrypt_then_mac = true;
+	} else if (type == TLSEXT_TYPE_extended_master_secret) {
+		ctx->parse_result->present_extensions.extended_master_secret = true;
+	} else if (type == TLSEXT_TYPE_session_ticket) {
+		ctx->parse_result->present_extensions.session_ticket = true;
 	}
 }
 
-bool parse_client_hello(const uint8_t *data, int length, struct chello_t *result) {
+bool parse_client_hello(struct chello_t *result, const uint8_t *data, int length) {
 	memset(result, 0, sizeof(struct chello_t));
 
 	SSL_CTX *sslctx = SSL_CTX_new(SSLv23_server_method());
@@ -183,7 +189,7 @@ bool parse_client_hello(const uint8_t *data, int length, struct chello_t *result
 
 	/* Setup the argument callback structure */
 	struct callback_ctx_t cb_ctx = {
-		.debug = false,
+		.debug = loglevel_at_least(LLVL_TRACE),
 		.parse_result = result,
 	};
 
@@ -204,5 +210,10 @@ bool parse_client_hello(const uint8_t *data, int length, struct chello_t *result
 	SSL_free(ssl);
 	SSL_CTX_free(sslctx);
 
-	return result->seen_client_hello;
+	return cb_ctx.seen_client_hello;
+}
+
+void free_client_hello(struct chello_t *chello) {
+	free(chello->server_name_indication);
+	chello->server_name_indication = NULL;
 }
