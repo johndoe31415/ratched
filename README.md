@@ -48,22 +48,20 @@ The help page should be pretty self-explanatory:
 ```
 usage: ratched [-c path] [-f hostname:port] [--single-shot] [--dump-certs]
                [--keyspec keyspec] [--initial-read-timeout secs]
-               [--reject-unknown-traffic] [--default-no-intercept]
-               [--default-client-cert-request]
-               [--default-client-cert certfile:keyfile[:cafile]]
                [--mark-forged-certificates] [--no-recalculate-keyids]
                [--daemonize] [--logfile file] [--flush-logs] [--crl-uri uri]
                [--ocsp-uri uri] [--write-memdumps-into-files]
-               [-l hostname:port] [-i hostname[,key=value,...]]
-               [--pcap-comment comment] [-o filename] [-v]
+               [-l hostname:port] [-d key=value[,key=value,...]]
+               [-i hostname[,key=value,...]] [--pcap-comment comment]
+               [-o filename] [-v]
 
 ratched - TLS connection router that performs a man-in-the-middle attack
 
 optional arguments:
   -c path, --config-dir path
-                        Configuration directory where the root CA certificate,
-                        CA keypair and server keypair are stored. Defaults to
-                        ~/.config/ratched
+                        Configuration directory where the default root CA
+                        certificate, CA keypair and server keypair are stored.
+                        Defaults to ~/.config/ratched
   -f hostname:port, --local-fwd hostname:port
                         When local connection to listening port is made, the
                         connection is discarded by default. Specifying this
@@ -86,36 +84,6 @@ optional arguments:
                         point number) that ratched waits for the client to
                         provide its ClientHello before giving up. The default
                         is 1.0 secs.
-  --reject-unknown-traffic
-                        By default, ratched first tries to read a valid
-                        ClientHello from the client. If that fails (for
-                        example, because the client is not trying to perform a
-                        TLS handshake), traffic is routed unmodified. If this
-                        option is specified, unrecognized (non-TLS) traffic is
-                        not forwarded unmodified, but the connection is closed
-                        instead.
-  --default-no-intercept
-                        The default actions for hosts that have not been
-                        explicitly specified is to intercept the connection.
-                        This option changes it so that by default, traffic
-                        will be routed unmodified unless explicit interception
-                        is requested.
-  --default-client-cert-request
-                        Request by default for clients to provide a client
-                        certificate by use of the CertificateRequest TLS
-                        message. If a connecting client provides one, it will
-                        be replaced either by a forged counterpart (with all
-                        the metadata copied from the original) or by the
-                        default client certificate (if that option was
-                        specified) when connecting to the actual target.
-  --default-client-cert certfile:keyfile[:cafile]
-                        If a connecting default client sends a client
-                        certificate, do not forge the metadata of that
-                        certificate to connect to the actual TLS server, but
-                        always present this client certificate and key.
-                        Optionally can also include a third parameter that
-                        specifies the client certificate chain to be sent to
-                        the server. All files need to be in PEM format.
   --mark-forged-certificates
                         Include an OU=ratched entry to the subjects of all
                         created certificates (including dynamically forged
@@ -147,15 +115,18 @@ optional arguments:
   -l hostname:port, --listen hostname:port
                         Specify the address and port that ratched is listening
                         on. Defaults to 127.0.0.1:9999.
+  -d key=value[,key=value,...], --defaults key=value[,key=value,...]
+                        Specify the server and client connection parameters
+                        for all hosts that are not explicitly listed via a
+                        --intercept option. Arguments are given in a key=value
+                        fashion; valid arguments are shown below.
   -i hostname[,key=value,...], --intercept hostname[,key=value,...]
                         Intercept only a specific host name, as indicated by
                         the Server Name Indication inside the ClientHello. Can
                         be specified multiple times to include interception or
-                        more than one host. By default, all targets are
-                        intercepted regardless of the hostname. Additional
-                        arguments can be specified in a key=value fashion to
-                        further define interception parameters for that
-                        particular host.
+                        more than one host. Additional arguments can be
+                        specified in a key=value fashion to further define
+                        interception parameters for that particular host.
   --pcap-comment comment
                         Store a particular piece of information inside the
                         PCAPNG header as a comment.
@@ -165,21 +136,57 @@ optional arguments:
   -v, --verbose         Increase logging verbosity.
 
 The arguments which are valid for the --intercept argument are as follows:
-    intercept=bool        Specifies if TLS interception should occur or not.
-                          The default value for this option is true.
-    clientcert=bool       Ask all connecting clients for a client certificate.
-                          If not replacement certificate (at least certfile and
-                          keyfile) is given, forge all metadata of the incoming
-                          certificate. If a certfile/keyfile is given, this
-                          option is implied.
-    certfile=filename     Specifies an X.509 certificate in PEM format that
-                          should be used by ratched whenever a client tried to
-                          send a client certificate. Must be used in
-                          conjunction with keyfile.
-    keyfile=filename      Specifies the private key for the given certfile in
-                          PEM format.
-    chainfile=filename    Specifies the X.509 certificate chain that is to be
-                          sent to the server, in PEM format.
+  intercept=[opportunistic|mandatory|forward|reject]
+                        Specifies the mode that ratched should act in for
+                        this particular connection. Opportunistic TLS
+                        interception is the default; it means that TLS
+                        interception is tried first. Should it fail, however
+                        (because someone tries to send non-TLS traffic), it
+                        falls back to 'forward' mode (i.e., forwarding all
+                        data unmodified). Mandatory TLS interception means
+                        that if no TLS interception is possible, the
+                        connection is terminated. 'forward', as explained,
+                        simply forwards everything unmodified. 'reject'
+                        closes the connection altogether, regardless of the
+                        type of seen traffic.
+  s_reqclientcert=bool  Ask all connecting clients to the server side of the
+                        TLS proxy for a client certificate. If not
+                        replacement certificate (at least certfile and
+                        keyfile) is given, forge all metadata of the incoming
+                        certificate. If a certfile/keyfile is given, this
+                        option is implied.
+  s_certfile=filename   Specifies an X.509 certificate in PEM format that
+                        should be used by ratched as the server certificate.
+                        By default, this certificate is automatically
+                        generated. Must be used in conjunction with
+                        s_keyfile.
+  s_keyfile=filename    Specifies the private key for the given server
+                        certificate, in PEM format.
+  s_chainfile=filename  Specifies the X.509 certificate chain that is to be
+                        sent to the client, in PEM format.
+  s_cacert=filename     Specifies the X.509 CA certificate that issues server
+                        certificates, in PEM format.
+  s_cakey=filename      Specifies the X.509 CA certificate key that signs
+                        server certificates, in PEM format.
+  s_ciphers=ciphers     Specifies the cipher suite string that the ratched
+                        TLS server uses.
+  s_groups=groups       Specifies the key agreement 'supported groups' string
+                        (formerly known as 'elliptic curves') that the
+                        ratched TLS server uses.
+  c_certfile=filename   Specifies an X.509 certificate in PEM format that
+                        should be used by ratched as a client certificate. It
+                        will only be used when the connecting client also
+                        provided a client certificate. Must be used in
+                        conjunction with c_keyfile.
+  c_keyfile=filename    Specifies the private key for the given client
+                        certificate, in PEM format.
+  c_chainfile=filename  Specifies the X.509 certificate chain that is to be
+                        sent to the server, in PEM format.
+  c_ciphers=ciphers     Specifies the cipher suite string that the ratched
+                        TLS client uses.
+  c_groups=groups       Specifies the key agreement 'supported groups' string
+                        (formerly known as 'elliptic curves') that the
+                        ratched TLS client uses.
 
 examples:
     $ ratched -o output.pcapng
@@ -195,7 +202,7 @@ examples:
       Be much more verbose during interception and also print out forged
       certificates in the log.
 
-    $ ratched --default-no-intercept --intercept www.johannes-bauer.com -o output.pcapng
+    $ ratched --defaults intercept=forward -intercept --intercept www.johannes-bauer.com -o output.pcapng
       Do not generally intercept connections (but rather forward all traffic
       unmodified) except for connections with Server Name Indication
       www.johannes-bauer.com, on which interception is performed.
@@ -209,7 +216,7 @@ examples:
       certificate metadata and use the forged client certificate in the
       connection against the real server.
 
-    $ ratched --intercept www.johannes-bauer.com,cerfile=joe.crt,keyfile=joe.key -o output.pcapng
+    $ ratched --intercept www.johannes-bauer.com,c_cerfile=joe.crt,c_keyfile=joe.key -o output.pcapng
       Same as before, but for connections to johannes-bauer.com, do not forge
       client certificates, but always use the given client certificate and key
       (joe.crt / joe.key) for authentication against the server.
@@ -218,7 +225,7 @@ examples:
       Choose secp256r1 instead of RSA-2048 for all used certificates and
       encode an OCSP Responder URI into those forged certificates as well.
 
-    $ ratched --initial-read-timeout 5.0 --reject-unknown-traffic -o output.pcapng
+    $ ratched --initial-read-timeout 5.0 --default intercept=mandatory -o output.pcapng
       Wait five seconds for connecting clients to send a valid ClientHello
       message. If after five seconds nothing is received or if unknown (non-
       TLS) traffic is received, terminate the connection instead of performing

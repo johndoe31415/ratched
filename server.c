@@ -48,6 +48,7 @@
 #include "certforgery.h"
 #include "tools.h"
 #include "interceptdb.h"
+#include "errstack.h"
 
 static struct atomic_t active_client_connections;
 static bool quit;
@@ -62,134 +63,191 @@ struct client_thread_data_t {
 	struct multithread_dumper_t *mtdump;
 };
 
+#define MAX_PRELIMINARY_DATA_LEN		4096
+
+struct preliminary_data_t {
+	uint8_t data[MAX_PRELIMINARY_DATA_LEN];
+	ssize_t data_length;
+	bool seen_clienthello;
+	struct chello_t parsed_data;
+};
+
+static void retrieve_and_parse_preliminary_data(struct errstack_t *es, int read_sd, struct preliminary_data_t *preliminary_data) {
+	/* Init structure somewhat (not the buffer though, that'd be pointless) */
+	preliminary_data->data_length = 0;
+	memset(&preliminary_data->parsed_data, 0, sizeof(struct chello_t));
+
+	/* Connection to target suceeded. First read some bytes that the client
+	 * (presumably) has sent so far. */
+	bool data_available = select_read(read_sd, pgm_options->initial_read_timeout);
+	if (data_available) {
+		preliminary_data->data_length = read(read_sd, preliminary_data->data, MAX_PRELIMINARY_DATA_LEN);
+		logmsg(LLVL_DEBUG, "Initial client connection returned %zd bytes.", preliminary_data->data_length);
+	} else {
+		logmsg(LLVL_DEBUG, "Initial client connection timed out after %.1f sec.", pgm_options->initial_read_timeout);
+	}
+
+	/* Now try to parse these bytes as a ClientHello message, if possible */
+	if (preliminary_data->data_length > 0) {
+		preliminary_data->seen_clienthello = parse_client_hello(&preliminary_data->parsed_data, preliminary_data->data, preliminary_data->data_length);
+		if (preliminary_data->seen_clienthello) {
+			errstack_add_clienthello(es, &preliminary_data->parsed_data);
+			logmsg(LLVL_DEBUG, "Successfully parsed ClientHello message from preliminary data. SNI %s", preliminary_data->parsed_data.server_name_indication ? preliminary_data->parsed_data.server_name_indication : "not present");
+		} else {
+			logmsg(LLVL_WARN, "The %zd initial bytes couldn't be parsed as a ClientHello.", preliminary_data->data_length);
+		}
+	}
+}
+
+static void start_plain_forwarding(const struct preliminary_data_t *preliminary_data, int accepted_fd, int connected_fd) {
+	/* First write the preliminary data to its peer, then forward the rest of the data */
+	logmsg(LLVL_INFO, "Direct and unmodified forwarding of traffic, not intercepting.");
+	if (preliminary_data->data_length > 0) {
+		ssize_t bytes_written = write(connected_fd, preliminary_data->data, preliminary_data->data_length);
+		if (bytes_written != preliminary_data->data_length) {
+			logmsg(LLVL_WARN, "Preliminary data read was %zd bytes, but only %zd bytes written.", preliminary_data->data_length, bytes_written);
+		}
+	}
+	plain_forward_data(accepted_fd, connected_fd);
+}
+
+static void log_tls_endpoint_config(enum loglvl_t loglvl, const char *description, const struct tls_endpoint_config_t *config) {
+	if (loglevel_at_least(loglvl)) {
+		char buf[128];
+		dump_tls_endpoint_config(buf, sizeof(buf), config);
+		logmsg(loglvl, "%s: %s", description, buf);
+	}
+}
+
+static void start_tls_forwarding(struct intercept_entry_t *decision, const struct client_thread_data_t *ctx, const struct preliminary_data_t *preliminary_data, int accepted_fd, int connected_fd) {
+	/* Now perform TLS handshake with the accepted peer first */
+	struct tls_endpoint_config_t server_config = decision->server_template;
+	log_tls_endpoint_config(LLVL_TRACE, "Server TLS endpoint configuration template", &server_config);
+
+	if (!server_config.key) {
+		logmsg(LLVL_ERROR, "TLS forwarding not possible, configuration is missing the server private key.");
+		return;
+	}
+
+	if (!server_config.cert) {
+		/* No static configuration for that host, dynamically generate
+		 * server certificate */
+		if (!server_config.certificate_authority.cert) {
+			logmsg(LLVL_ERROR, "TLS forwarding not possible. Tried to generate server certificate, but CA certificate is missing.");
+			return;
+		}
+		if (!server_config.certificate_authority.key) {
+			logmsg(LLVL_ERROR, "TLS forwarding not possible. Tried to generate server certificate, but CA private key is missing.");
+			return;
+		}
+		server_config.cert = forge_certificate_for_server(preliminary_data->parsed_data.server_name_indication, ctx->destination_ip_nbo);
+	}
+
+	log_tls_endpoint_config(LLVL_TRACE, "Server TLS endpoint final configuration", &server_config);
+
+	struct tls_connection_request_t server_request = {
+		.is_server = true,
+		.peer_fd = accepted_fd,
+		.config = &server_config,
+		.initial_peer_data = preliminary_data->data,
+		.initial_peer_data_length = preliminary_data->data_length,
+	};
+	struct tls_connection_t accepted_ssl = openssl_tls_connect(&server_request);
+
+	/* Did the accepted peer send a client certificate? */
+	struct tls_endpoint_config_t client_config = decision->client_template;
+	log_tls_endpoint_config(LLVL_TRACE, "Client TLS endpoint configuration template", &client_config);
+
+	if (accepted_ssl.ssl && accepted_ssl.peer_certificate)  {
+		if (!client_config.cert) {
+			/* Client certificates are used, but no static client
+			 * certificate configuration found. Dynamically generate
+			 * client certificate. */
+			client_config.key = get_tls_client_key();
+			client_config.cert = forge_client_certificate(accepted_ssl.peer_certificate, client_config.key, NULL, client_config.key, pgm_options->default_recalculate_key_identifiers, pgm_options->mark_forged_certificates);
+			log_cert(LLVL_DEBUG, client_config.cert, "Dynamically created client certificate");
+		} else {
+			X509_up_ref(client_config.cert);
+		}
+	}
+	log_tls_endpoint_config(LLVL_TRACE, "Client TLS endpoint final configuration", &client_config);
+
+	/* And do a TLS handshake with the connected peer as well */
+	struct tls_connection_request_t client_request = {
+		.is_server = false,
+		.peer_fd = connected_fd,
+		.config = &client_config,
+		.server_name_indication = preliminary_data->parsed_data.server_name_indication,
+	};
+	struct tls_connection_t connected_ssl = openssl_tls_connect(&client_request);
+
+	/* Then forward the TLS channels */
+	if (connected_ssl.ssl && accepted_ssl.ssl) {
+		/* Create a connection to dump data into */
+		struct connection_t conn = {
+			.acceptor = {
+				.ip_nbo = ctx->destination_ip_nbo,
+				.port_nbo = ctx->destination_port_nbo,
+				.hostname = preliminary_data->parsed_data.server_name_indication,
+			},
+			.connector = {
+				.ip_nbo = ctx->source_ip_nbo,
+				.port_nbo = ctx->source_port_nbo,
+			},
+		};
+		char comment[256];
+		snprintf(comment, sizeof(comment), "%zd bytes ClientHello, Server Name Indication %s, " PRI_IPv4 ":%u", preliminary_data->data_length, preliminary_data->parsed_data.server_name_indication ? preliminary_data->parsed_data.server_name_indication : "not present", FMT_IPv4(conn.acceptor.ip_nbo), ntohs(conn.acceptor.port_nbo));
+		create_tcp_ip_connection(ctx->mtdump, &conn, comment);
+		tls_forward_data(accepted_ssl.ssl, connected_ssl.ssl, &conn);
+		teardown_tcp_ip_connection(&conn, false);
+	} else {
+		logmsg(LLVL_ERROR, "One TLS connection couldn't be established (connected %p, accepted %p). Cannot forward.", connected_ssl.ssl, accepted_ssl.ssl);
+	}
+
+	SSL_free(connected_ssl.ssl);
+	SSL_free(accepted_ssl.ssl);
+	X509_free(client_config.cert);
+}
+
 static void client_thread_fnc(void *vctx) {
 	struct client_thread_data_t *ctx = (struct client_thread_data_t*)vctx;
+	struct errstack_t es = { 0 };
+	errstack_add_atomic_dec(&es, &active_client_connections);
+	errstack_add_malloc(&es, ctx);
+	errstack_add_fd(&es, ctx->accepted_sd);
 
 	/* Create client connection first */
-	int connected_sd = tcp_connect(ctx->destination_ip_nbo, ctx->destination_port_nbo);
-
+	int connected_sd = errstack_add_fd(&es, tcp_connect(ctx->destination_ip_nbo, ctx->destination_port_nbo));
 	if (connected_sd == -1) {
 		/* Connection to client failed. */
 		logmsg(LLVL_ERROR, "Outgoing connection to " PRI_IPv4_PORT " failed, closing accepted connection: %s", FMT_IPv4_PORT_TUPLE(ctx->destination_ip_nbo, ctx->destination_port_nbo), strerror(errno));
-	} else {
-		/* Connection to target suceeded. First read some bytes that the client
-		 * (presumably) has sent so far. */
-		uint8_t preliminary_data[4096];
-		bool data_available = select_read(ctx->accepted_sd, pgm_options->initial_read_timeout);
-		ssize_t bytes_read = 0;
-		if (data_available) {
-			bytes_read = read(ctx->accepted_sd, preliminary_data, sizeof(preliminary_data));
-			logmsg(LLVL_DEBUG, "Initial client connection returned %zd bytes.", bytes_read);
-		} else {
-			logmsg(LLVL_DEBUG, "Initial client connection timed out after %.1f sec.", pgm_options->initial_read_timeout);
-		}
-
-		/* Now try to parse these bytes as a ClientHello message, if possible */
-		struct chello_t client_hello = { 0 };
-		if (bytes_read > 0) {
-			if (parse_client_hello(&client_hello, preliminary_data, bytes_read)) {
-				logmsg(LLVL_DEBUG, "Successfully parsed ClientHello message. SNI %s", client_hello.server_name_indication ? client_hello.server_name_indication : "not present");
-			} else {
-				logmsg(LLVL_WARN, "The %zd initial bytes couldn't be parsed as a ClientHello, treating connection as a default client.", bytes_read);
-			}
-		}
-
-		/* Given all the facts, determine if and how we should intercept the
-		 * connection. Look up the entry in the interception DB */
-		struct intercept_entry_t *decision = interceptdb_find_entry(client_hello.server_name_indication, ctx->destination_ip_nbo);
-		if (!decision->do_intercept) {
-			if (pgm_options->reject_unknown_traffic) {
-				logmsg(LLVL_WARN, "Rejecting unknown traffic instead of forwarding unmodified.");
-				close(ctx->accepted_sd);
-				close(connected_sd);
-			} else {
-				/* First write the preliminary data to its peer, then forward the rest of the data */
-				logmsg(LLVL_INFO, "Direct and unmodified forwarding of traffic, not intercepting.");
-				if (bytes_read > 0) {
-					ssize_t bytes_written = write(connected_sd, preliminary_data, bytes_read);
-					if (bytes_written != bytes_read) {
-						logmsg(LLVL_WARN, "Preliminary data read was %zd bytes, but only %zd bytes written.", bytes_read, bytes_written);
-					}
-				}
-				plain_forward_data(ctx->accepted_sd, connected_sd);
-			}
-		} else {
-			/* Now perform TLS handshake with the accepted peer first */
-			struct tls_endpoint_config_t server_config = decision->server;
-			if (!server_config.cert) {
-				/* No static configuration for that host, dynamically generate
-				 * server certificate */
-				server_config.key = get_tls_server_key();
-				server_config.cert = forge_certificate_for_server(client_hello.server_name_indication, ctx->destination_ip_nbo);
-				server_config.ocsp_responder.cert = get_forged_root_certificate();
-				server_config.ocsp_responder.key = get_forged_root_key();
-			}
-			struct tls_connection_request_t server_request = {
-				.is_server = true,
-				.peer_fd = ctx->accepted_sd,
-				.config = &server_config,
-				.initial_peer_data = preliminary_data,
-				.initial_peer_data_length = bytes_read,
-			};
-			struct tls_connection_t accepted_ssl = openssl_tls_connect(&server_request);
-
-			/* Did the accepted peer send a client certificate? */
-			struct tls_endpoint_config_t client_config = decision->client;
-			if (accepted_ssl.ssl && accepted_ssl.peer_certificate)  {
-				if (!client_config.cert) {
-					/* Client certificates are used, but no static client
-					 * certificate configuration found. Dynamically generate
-					 * client certificate. */
-					client_config.key = get_tls_client_key();
-					client_config.cert = forge_client_certificate(accepted_ssl.peer_certificate, client_config.key, NULL, client_config.key, pgm_options->default_recalculate_key_identifiers, pgm_options->mark_forged_certificates);
-					log_cert(LLVL_DEBUG, client_config.cert, "Dynamically created client certificate");
-				} else {
-					X509_up_ref(client_config.cert);
-				}
-			}
-
-			/* And do a TLS handshake with the connected peer as well */
-			struct tls_connection_request_t client_request = {
-				.is_server = false,
-				.peer_fd = connected_sd,
-				.config = &client_config,
-				.server_name_indication = client_hello.server_name_indication,
-			};
-			struct tls_connection_t connected_ssl = openssl_tls_connect(&client_request);
-
-			/* Then forward the TLS channels */
-			if (connected_ssl.ssl && accepted_ssl.ssl) {
-				/* Create a connection to dump data into */
-				struct connection_t conn = {
-					.acceptor = {
-						.ip_nbo = ctx->destination_ip_nbo,
-						.port_nbo = ctx->destination_port_nbo,
-						.hostname = client_hello.server_name_indication,
-					},
-					.connector = {
-						.ip_nbo = ctx->source_ip_nbo,
-						.port_nbo = ctx->source_port_nbo,
-					},
-				};
-				char comment[256];
-				snprintf(comment, sizeof(comment), "%zd bytes ClientHello, Server Name Indication %s, " PRI_IPv4 ":%u", bytes_read, client_hello.server_name_indication ? client_hello.server_name_indication : "not present", FMT_IPv4(conn.acceptor.ip_nbo), ntohs(conn.acceptor.port_nbo));
-				create_tcp_ip_connection(ctx->mtdump, &conn, comment);
-				tls_forward_data(accepted_ssl.ssl, connected_ssl.ssl, &conn);
-				teardown_tcp_ip_connection(&conn, false);
-			} else {
-				logmsg(LLVL_ERROR, "One TLS connection couldn't be established (connected %p, accepted %p). Cannot forward.", connected_ssl.ssl, accepted_ssl.ssl);
-			}
-
-			SSL_free(connected_ssl.ssl);
-			SSL_free(accepted_ssl.ssl);
-			X509_free(client_config.cert);
-		}
-		free_client_hello(&client_hello);
+		errstack_free(&es);
+		return;
 	}
-	close(ctx->accepted_sd);
-	close(connected_sd);
-	free(ctx);
-	atomic_dec(&active_client_connections);
+
+	struct preliminary_data_t preliminary_data;
+	retrieve_and_parse_preliminary_data(&es, ctx->accepted_sd, &preliminary_data);
+
+	/* Given all the facts, determine if and how we should intercept the
+	 * connection. Look up the entry in the interception DB */
+	struct intercept_entry_t *decision = interceptdb_find_entry(preliminary_data.parsed_data.server_name_indication, ctx->destination_ip_nbo);
+	logmsg(LLVL_DEBUG, "Connection to " PRI_IPv4_PORT " in interception mode %s.", FMT_IPv4_PORT_TUPLE(ctx->destination_ip_nbo, ctx->destination_port_nbo), interception_mode_to_str(decision->interception_mode));
+
+	if (decision->interception_mode == REJECT_CONNECTION) {
+		/* Do nothing, just close connection. */
+	} else if ((decision->interception_mode == TRAFFIC_FORWARDING) || ((decision->interception_mode == OPPORTUNISTIC_TLS_INTERCEPTION) && !preliminary_data.seen_clienthello))  {
+		/* We either wanted to forward this connection from the get-go or we
+		 * tried opportunstic interception but couldn't parse a ClientHello
+		 * from the client data (or received no data). Engage unmodified
+		 * forwarding of traffic. */
+		start_plain_forwarding(&preliminary_data, ctx->accepted_sd, connected_sd);
+	} else if ((decision->interception_mode == OPPORTUNISTIC_TLS_INTERCEPTION) || (decision->interception_mode == MANDATORY_TLS_INTERCEPTION)) {
+		/* Do TLS interception */
+		start_tls_forwarding(decision, ctx, &preliminary_data, ctx->accepted_sd, connected_sd);
+	} else {
+		logmsg(LLVL_FATAL, "Programming error: got interception mode 0x%x", decision->interception_mode);
+	}
+	errstack_free(&es);
 }
 
 static void start_client_thread(struct multithread_dumper_t *mtdump, int accepted_sd, const struct sockaddr_in *source, const struct sockaddr_in *destination) {

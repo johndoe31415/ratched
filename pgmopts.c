@@ -34,6 +34,7 @@
 #include "stringlist.h"
 #include "keyvaluelist.h"
 #include "ipfwd.h"
+#include "intercept_config.h"
 
 static struct pgmopts_t pgm_options_rw = {
 	.log = {
@@ -43,9 +44,6 @@ static struct pgmopts_t pgm_options_rw = {
 		.listen = 10,
 	},
 	.initial_read_timeout = 1.0,
-	.default_client = {
-		.do_intercept = true,
-	},
 	.default_recalculate_key_identifiers = true,
 	.keyspec = {
 		.keytype = KEYTYPE_RSA,
@@ -66,22 +64,20 @@ void show_syntax(const char *pgmbinary) {
 	/* Begin of help page -- auto-generated, do not edit! */
 	fprintf(stderr, "usage: ratched [-c path] [-f hostname:port] [--single-shot] [--dump-certs]\n");
 	fprintf(stderr, "               [--keyspec keyspec] [--initial-read-timeout secs]\n");
-	fprintf(stderr, "               [--reject-unknown-traffic] [--default-no-intercept]\n");
-	fprintf(stderr, "               [--default-client-cert-request]\n");
-	fprintf(stderr, "               [--default-client-cert certfile:keyfile[:cafile]]\n");
 	fprintf(stderr, "               [--mark-forged-certificates] [--no-recalculate-keyids]\n");
 	fprintf(stderr, "               [--daemonize] [--logfile file] [--flush-logs] [--crl-uri uri]\n");
 	fprintf(stderr, "               [--ocsp-uri uri] [--write-memdumps-into-files]\n");
-	fprintf(stderr, "               [-l hostname:port] [-i hostname[,key=value,...]]\n");
-	fprintf(stderr, "               [--pcap-comment comment] [-o filename] [-v]\n");
+	fprintf(stderr, "               [-l hostname:port] [-d key=value[,key=value,...]]\n");
+	fprintf(stderr, "               [-i hostname[,key=value,...]] [--pcap-comment comment]\n");
+	fprintf(stderr, "               [-o filename] [-v]\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "ratched - TLS connection router that performs a man-in-the-middle attack\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "optional arguments:\n");
 	fprintf(stderr, "  -c path, --config-dir path\n");
-	fprintf(stderr, "                        Configuration directory where the root CA certificate,\n");
-	fprintf(stderr, "                        CA keypair and server keypair are stored. Defaults to\n");
-	fprintf(stderr, "                        ~/.config/ratched\n");
+	fprintf(stderr, "                        Configuration directory where the default root CA\n");
+	fprintf(stderr, "                        certificate, CA keypair and server keypair are stored.\n");
+	fprintf(stderr, "                        Defaults to ~/.config/ratched\n");
 	fprintf(stderr, "  -f hostname:port, --local-fwd hostname:port\n");
 	fprintf(stderr, "                        When local connection to listening port is made, the\n");
 	fprintf(stderr, "                        connection is discarded by default. Specifying this\n");
@@ -104,36 +100,6 @@ void show_syntax(const char *pgmbinary) {
 	fprintf(stderr, "                        point number) that ratched waits for the client to\n");
 	fprintf(stderr, "                        provide its ClientHello before giving up. The default\n");
 	fprintf(stderr, "                        is 1.0 secs.\n");
-	fprintf(stderr, "  --reject-unknown-traffic\n");
-	fprintf(stderr, "                        By default, ratched first tries to read a valid\n");
-	fprintf(stderr, "                        ClientHello from the client. If that fails (for\n");
-	fprintf(stderr, "                        example, because the client is not trying to perform a\n");
-	fprintf(stderr, "                        TLS handshake), traffic is routed unmodified. If this\n");
-	fprintf(stderr, "                        option is specified, unrecognized (non-TLS) traffic is\n");
-	fprintf(stderr, "                        not forwarded unmodified, but the connection is closed\n");
-	fprintf(stderr, "                        instead.\n");
-	fprintf(stderr, "  --default-no-intercept\n");
-	fprintf(stderr, "                        The default actions for hosts that have not been\n");
-	fprintf(stderr, "                        explicitly specified is to intercept the connection.\n");
-	fprintf(stderr, "                        This option changes it so that by default, traffic\n");
-	fprintf(stderr, "                        will be routed unmodified unless explicit interception\n");
-	fprintf(stderr, "                        is requested.\n");
-	fprintf(stderr, "  --default-client-cert-request\n");
-	fprintf(stderr, "                        Request by default for clients to provide a client\n");
-	fprintf(stderr, "                        certificate by use of the CertificateRequest TLS\n");
-	fprintf(stderr, "                        message. If a connecting client provides one, it will\n");
-	fprintf(stderr, "                        be replaced either by a forged counterpart (with all\n");
-	fprintf(stderr, "                        the metadata copied from the original) or by the\n");
-	fprintf(stderr, "                        default client certificate (if that option was\n");
-	fprintf(stderr, "                        specified) when connecting to the actual target.\n");
-	fprintf(stderr, "  --default-client-cert certfile:keyfile[:cafile]\n");
-	fprintf(stderr, "                        If a connecting default client sends a client\n");
-	fprintf(stderr, "                        certificate, do not forge the metadata of that\n");
-	fprintf(stderr, "                        certificate to connect to the actual TLS server, but\n");
-	fprintf(stderr, "                        always present this client certificate and key.\n");
-	fprintf(stderr, "                        Optionally can also include a third parameter that\n");
-	fprintf(stderr, "                        specifies the client certificate chain to be sent to\n");
-	fprintf(stderr, "                        the server. All files need to be in PEM format.\n");
 	fprintf(stderr, "  --mark-forged-certificates\n");
 	fprintf(stderr, "                        Include an OU=ratched entry to the subjects of all\n");
 	fprintf(stderr, "                        created certificates (including dynamically forged\n");
@@ -165,15 +131,18 @@ void show_syntax(const char *pgmbinary) {
 	fprintf(stderr, "  -l hostname:port, --listen hostname:port\n");
 	fprintf(stderr, "                        Specify the address and port that ratched is listening\n");
 	fprintf(stderr, "                        on. Defaults to 127.0.0.1:9999.\n");
+	fprintf(stderr, "  -d key=value[,key=value,...], --defaults key=value[,key=value,...]\n");
+	fprintf(stderr, "                        Specify the server and client connection parameters\n");
+	fprintf(stderr, "                        for all hosts that are not explicitly listed via a\n");
+	fprintf(stderr, "                        --intercept option. Arguments are given in a key=value\n");
+	fprintf(stderr, "                        fashion; valid arguments are shown below.\n");
 	fprintf(stderr, "  -i hostname[,key=value,...], --intercept hostname[,key=value,...]\n");
 	fprintf(stderr, "                        Intercept only a specific host name, as indicated by\n");
 	fprintf(stderr, "                        the Server Name Indication inside the ClientHello. Can\n");
 	fprintf(stderr, "                        be specified multiple times to include interception or\n");
-	fprintf(stderr, "                        more than one host. By default, all targets are\n");
-	fprintf(stderr, "                        intercepted regardless of the hostname. Additional\n");
-	fprintf(stderr, "                        arguments can be specified in a key=value fashion to\n");
-	fprintf(stderr, "                        further define interception parameters for that\n");
-	fprintf(stderr, "                        particular host.\n");
+	fprintf(stderr, "                        more than one host. Additional arguments can be\n");
+	fprintf(stderr, "                        specified in a key=value fashion to further define\n");
+	fprintf(stderr, "                        interception parameters for that particular host.\n");
 	fprintf(stderr, "  --pcap-comment comment\n");
 	fprintf(stderr, "                        Store a particular piece of information inside the\n");
 	fprintf(stderr, "                        PCAPNG header as a comment.\n");
@@ -183,21 +152,57 @@ void show_syntax(const char *pgmbinary) {
 	fprintf(stderr, "  -v, --verbose         Increase logging verbosity.\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "The arguments which are valid for the --intercept argument are as follows:\n");
-	fprintf(stderr, "    intercept=bool        Specifies if TLS interception should occur or not.\n");
-	fprintf(stderr, "                          The default value for this option is true.\n");
-	fprintf(stderr, "    clientcert=bool       Ask all connecting clients for a client certificate.\n");
-	fprintf(stderr, "                          If not replacement certificate (at least certfile and\n");
-	fprintf(stderr, "                          keyfile) is given, forge all metadata of the incoming\n");
-	fprintf(stderr, "                          certificate. If a certfile/keyfile is given, this\n");
-	fprintf(stderr, "                          option is implied.\n");
-	fprintf(stderr, "    certfile=filename     Specifies an X.509 certificate in PEM format that\n");
-	fprintf(stderr, "                          should be used by ratched whenever a client tried to\n");
-	fprintf(stderr, "                          send a client certificate. Must be used in\n");
-	fprintf(stderr, "                          conjunction with keyfile.\n");
-	fprintf(stderr, "    keyfile=filename      Specifies the private key for the given certfile in\n");
-	fprintf(stderr, "                          PEM format.\n");
-	fprintf(stderr, "    chainfile=filename    Specifies the X.509 certificate chain that is to be\n");
-	fprintf(stderr, "                          sent to the server, in PEM format.\n");
+	fprintf(stderr, "  intercept=[opportunistic|mandatory|forward|reject]\n");
+	fprintf(stderr, "                        Specifies the mode that ratched should act in for\n");
+	fprintf(stderr, "                        this particular connection. Opportunistic TLS\n");
+	fprintf(stderr, "                        interception is the default; it means that TLS\n");
+	fprintf(stderr, "                        interception is tried first. Should it fail, however\n");
+	fprintf(stderr, "                        (because someone tries to send non-TLS traffic), it\n");
+	fprintf(stderr, "                        falls back to 'forward' mode (i.e., forwarding all\n");
+	fprintf(stderr, "                        data unmodified). Mandatory TLS interception means\n");
+	fprintf(stderr, "                        that if no TLS interception is possible, the\n");
+	fprintf(stderr, "                        connection is terminated. 'forward', as explained,\n");
+	fprintf(stderr, "                        simply forwards everything unmodified. 'reject'\n");
+	fprintf(stderr, "                        closes the connection altogether, regardless of the\n");
+	fprintf(stderr, "                        type of seen traffic.\n");
+	fprintf(stderr, "  s_reqclientcert=bool  Ask all connecting clients to the server side of the\n");
+	fprintf(stderr, "                        TLS proxy for a client certificate. If not\n");
+	fprintf(stderr, "                        replacement certificate (at least certfile and\n");
+	fprintf(stderr, "                        keyfile) is given, forge all metadata of the incoming\n");
+	fprintf(stderr, "                        certificate. If a certfile/keyfile is given, this\n");
+	fprintf(stderr, "                        option is implied.\n");
+	fprintf(stderr, "  s_certfile=filename   Specifies an X.509 certificate in PEM format that\n");
+	fprintf(stderr, "                        should be used by ratched as the server certificate.\n");
+	fprintf(stderr, "                        By default, this certificate is automatically\n");
+	fprintf(stderr, "                        generated. Must be used in conjunction with\n");
+	fprintf(stderr, "                        s_keyfile.\n");
+	fprintf(stderr, "  s_keyfile=filename    Specifies the private key for the given server\n");
+	fprintf(stderr, "                        certificate, in PEM format.\n");
+	fprintf(stderr, "  s_chainfile=filename  Specifies the X.509 certificate chain that is to be\n");
+	fprintf(stderr, "                        sent to the client, in PEM format.\n");
+	fprintf(stderr, "  s_cacert=filename     Specifies the X.509 CA certificate that issues server\n");
+	fprintf(stderr, "                        certificates, in PEM format.\n");
+	fprintf(stderr, "  s_cakey=filename      Specifies the X.509 CA certificate key that signs\n");
+	fprintf(stderr, "                        server certificates, in PEM format.\n");
+	fprintf(stderr, "  s_ciphers=ciphers     Specifies the cipher suite string that the ratched\n");
+	fprintf(stderr, "                        TLS server uses.\n");
+	fprintf(stderr, "  s_groups=groups       Specifies the key agreement 'supported groups' string\n");
+	fprintf(stderr, "                        (formerly known as 'elliptic curves') that the\n");
+	fprintf(stderr, "                        ratched TLS server uses.\n");
+	fprintf(stderr, "  c_certfile=filename   Specifies an X.509 certificate in PEM format that\n");
+	fprintf(stderr, "                        should be used by ratched as a client certificate. It\n");
+	fprintf(stderr, "                        will only be used when the connecting client also\n");
+	fprintf(stderr, "                        provided a client certificate. Must be used in\n");
+	fprintf(stderr, "                        conjunction with c_keyfile.\n");
+	fprintf(stderr, "  c_keyfile=filename    Specifies the private key for the given client\n");
+	fprintf(stderr, "                        certificate, in PEM format.\n");
+	fprintf(stderr, "  c_chainfile=filename  Specifies the X.509 certificate chain that is to be\n");
+	fprintf(stderr, "                        sent to the server, in PEM format.\n");
+	fprintf(stderr, "  c_ciphers=ciphers     Specifies the cipher suite string that the ratched\n");
+	fprintf(stderr, "                        TLS client uses.\n");
+	fprintf(stderr, "  c_groups=groups       Specifies the key agreement 'supported groups' string\n");
+	fprintf(stderr, "                        (formerly known as 'elliptic curves') that the\n");
+	fprintf(stderr, "                        ratched TLS client uses.\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "examples:\n");
 	fprintf(stderr, "    $ ratched -o output.pcapng\n");
@@ -213,7 +218,7 @@ void show_syntax(const char *pgmbinary) {
 	fprintf(stderr, "      Be much more verbose during interception and also print out forged\n");
 	fprintf(stderr, "      certificates in the log.\n");
 	fprintf(stderr, "\n");
-	fprintf(stderr, "    $ ratched --default-no-intercept --intercept www.johannes-bauer.com -o output.pcapng\n");
+	fprintf(stderr, "    $ ratched --defaults intercept=forward -intercept --intercept www.johannes-bauer.com -o output.pcapng\n");
 	fprintf(stderr, "      Do not generally intercept connections (but rather forward all traffic\n");
 	fprintf(stderr, "      unmodified) except for connections with Server Name Indication\n");
 	fprintf(stderr, "      www.johannes-bauer.com, on which interception is performed.\n");
@@ -227,7 +232,7 @@ void show_syntax(const char *pgmbinary) {
 	fprintf(stderr, "      certificate metadata and use the forged client certificate in the\n");
 	fprintf(stderr, "      connection against the real server.\n");
 	fprintf(stderr, "\n");
-	fprintf(stderr, "    $ ratched --intercept www.johannes-bauer.com,cerfile=joe.crt,keyfile=joe.key -o output.pcapng\n");
+	fprintf(stderr, "    $ ratched --intercept www.johannes-bauer.com,c_cerfile=joe.crt,c_keyfile=joe.key -o output.pcapng\n");
 	fprintf(stderr, "      Same as before, but for connections to johannes-bauer.com, do not forge\n");
 	fprintf(stderr, "      client certificates, but always use the given client certificate and key\n");
 	fprintf(stderr, "      (joe.crt / joe.key) for authentication against the server.\n");
@@ -236,7 +241,7 @@ void show_syntax(const char *pgmbinary) {
 	fprintf(stderr, "      Choose secp256r1 instead of RSA-2048 for all used certificates and\n");
 	fprintf(stderr, "      encode an OCSP Responder URI into those forged certificates as well.\n");
 	fprintf(stderr, "\n");
-	fprintf(stderr, "    $ ratched --initial-read-timeout 5.0 --reject-unknown-traffic -o output.pcapng\n");
+	fprintf(stderr, "    $ ratched --initial-read-timeout 5.0 --default intercept=mandatory -o output.pcapng\n");
 	fprintf(stderr, "      Wait five seconds for connecting clients to send a valid ClientHello\n");
 	fprintf(stderr, "      message. If after five seconds nothing is received or if unknown (non-\n");
 	fprintf(stderr, "      TLS) traffic is received, terminate the connection instead of performing\n");
@@ -253,6 +258,7 @@ enum cmdline_arg_t {
 	ARG_CONFIG_DIR_SHORT = 'c',
 	ARG_LOCAL_FWD_SHORT = 'f',
 	ARG_LISTEN_SHORT = 'l',
+	ARG_DEFAULTS_SHORT = 'd',
 	ARG_INTERCEPT_SHORT = 'i',
 	ARG_OUTFILE_SHORT = 'o',
 	ARG_VERBOSE_SHORT = 'v',
@@ -263,10 +269,6 @@ enum cmdline_arg_t {
 	ARG_DUMP_CERTS,
 	ARG_KEYSPEC,
 	ARG_INITIAL_READ_TIMEOUT,
-	ARG_REJECT_UNKNOWN_TRAFFIC,
-	ARG_DEFAULT_NO_INTERCEPT,
-	ARG_DEFAULT_CLIENT_CERT_REQUEST,
-	ARG_DEFAULT_CLIENT_CERT,
 	ARG_MARK_FORGED_CERTIFICATES,
 	ARG_NO_RECALCULATE_KEYIDS,
 	ARG_DAEMONIZE,
@@ -276,54 +278,13 @@ enum cmdline_arg_t {
 	ARG_OCSP_URI,
 	ARG_WRITE_MEMDUMPS_INTO_FILES,
 	ARG_LISTEN,
+	ARG_DEFAULTS,
 	ARG_INTERCEPT,
 	ARG_PCAP_COMMENT,
 	ARG_OUTFILE,
 	ARG_VERBOSE,
 };
 /* End of command definition enum -- auto-generated, do not edit! */
-
-static bool add_intercept_hostname(const char *hostname_params) {
-	struct intercept_config_t *new_config = realloc(pgm_options_rw.intercept.config, sizeof(struct intercept_config_t) * (pgm_options_rw.intercept.count + 1));
-	if (!new_config) {
-		logmsg(LLVL_FATAL, "Failed to realloc(3) pgm_options_rw.intercept.config: %s", strerror(errno));
-		return false;
-	}
-	pgm_options_rw.intercept.config = new_config;
-
-	struct intercept_config_t *entry = &pgm_options_rw.intercept.config[pgm_options_rw.intercept.count++];
-	memset(entry, 0, sizeof(struct intercept_config_t));
-	entry->do_intercept = true;
-
-	struct keyvaluelist_def_t definition[] = {
-		{ .key = "intercept", .parser = keyvalue_bool, .target = &entry->do_intercept },
-		{ .key = "clientcert", .parser = keyvalue_bool, .target = &entry->request_client_cert },
-		{ .key = "certfile", .parser = keyvalue_string, .target = &entry->client_cert_filename },
-		{ .key = "keyfile", .parser = keyvalue_string, .target = &entry->client_key_filename },
-		{ .key = "chainfile", .parser = keyvalue_string, .target = &entry->client_chain_filename },
-		{ 0 }
-	};
-	if (parse_keyvalue_list(hostname_params, 1, definition, &entry->hostname) == -1) {
-		return false;
-	}
-	if ((entry->client_cert_filename == NULL) ^ (entry->client_key_filename == NULL)) {
-		logmsg(LLVL_ERROR, "%s: When specifying a client certificate, you also need to specify a corresponding private key.", entry->hostname);
-		return false;
-	}
-	if ((entry->client_cert_filename == NULL) && (entry->client_chain_filename)) {
-		logmsg(LLVL_WARN, "%s: Specifying a client certificate chain file without specifying a client certificate does not make sense.", entry->hostname);
-		return false;
-	}
-	if (entry->client_cert_filename) {
-		/* Having a CertificateRequest is implied when using a client
-		 * certificate */
-		if (!entry->request_client_cert) {
-			logmsg(LLVL_DEBUG, "%s: Provided a client certificate -> CertificateRequest message is implied.", entry->hostname);
-		}
-		entry->request_client_cert = true;
-	}
-	return true;
-}
 
 static bool set_default_config_dir(void) {
 	char *homedir = getenv("HOME");
@@ -383,39 +344,23 @@ static bool parse_keyspec(const char *arg) {
 	return true;
 }
 
-static bool parse_trusted_client_cert(const char *arg) {
-	struct stringlist_t list;
-	parse_stringlist(&list, arg, ":");
-	if ((list.token_cnt != 2) && (list.token_cnt != 3)) {
-		snprintf(parsing_error, sizeof(parsing_error), "expected either two or three parameters for trusted client cert, but got %d.", list.token_cnt);
-		free_stringlist(&list);
+static bool append_custom_intercept_config(const char *connection_params) {
+	struct intercept_config_t *entry = parse_intercept_config(connection_params, true);
+	if (!entry) {
 		return false;
 	}
 
-	pgm_options_rw.default_client.client_cert_filename = strdup(list.tokens[0]);
-	if (!pgm_options_rw.default_client.client_cert_filename) {
-		logmsg(LLVL_FATAL, "Failed to strdup(3) crt_filename: %s", strerror(errno));
-		free_stringlist(&list);
+	struct intercept_config_t **new_config = realloc(pgm_options_rw.intercept.config, sizeof(struct intercept_config_t*) * (pgm_options_rw.intercept.count + 1));
+	if (!new_config) {
+		logmsg(LLVL_FATAL, "Failed to realloc(3) pgm_options_rw.intercept.config: %s", strerror(errno));
+		free_intercept_config(&entry);
 		return false;
 	}
+	pgm_options_rw.intercept.config = new_config;
 
-	pgm_options_rw.default_client.client_key_filename = strdup(list.tokens[1]);
-	if (!pgm_options_rw.default_client.client_key_filename) {
-		logmsg(LLVL_FATAL, "Failed to strdup(3) key_filename: %s", strerror(errno));
-		free_stringlist(&list);
-		return false;
-	}
+	pgm_options_rw.intercept.config[pgm_options_rw.intercept.count] = entry;
+	pgm_options_rw.intercept.count++;
 
-	if (list.token_cnt >= 3) {
-		pgm_options_rw.default_client.client_chain_filename = strdup(list.tokens[2]);
-		if (!pgm_options_rw.default_client.client_chain_filename) {
-			logmsg(LLVL_FATAL, "Failed to strdup(3) chain_filename: %s", strerror(errno));
-			free_stringlist(&list);
-			return false;
-		}
-	}
-
-	free_stringlist(&list);
 	return true;
 }
 
@@ -424,7 +369,7 @@ bool parse_options(int argc, char **argv) {
 	pgm_options_rw.server_socket.port_nbo = htons(9999);
 
 	/* Begin of command definition -- auto-generated, do not edit! */
-	const char *short_options = "c:f:l:i:o:v";
+	const char *short_options = "c:f:l:d:i:o:v";
 	struct option long_options[] = {
 		{ "config-dir",                  required_argument, 0, ARG_CONFIG_DIR },
 		{ "local-fwd",                   required_argument, 0, ARG_LOCAL_FWD },
@@ -432,10 +377,6 @@ bool parse_options(int argc, char **argv) {
 		{ "dump-certs",                  no_argument,       0, ARG_DUMP_CERTS },
 		{ "keyspec",                     required_argument, 0, ARG_KEYSPEC },
 		{ "initial-read-timeout",        required_argument, 0, ARG_INITIAL_READ_TIMEOUT },
-		{ "reject-unknown-traffic",      no_argument,       0, ARG_REJECT_UNKNOWN_TRAFFIC },
-		{ "default-no-intercept",        no_argument,       0, ARG_DEFAULT_NO_INTERCEPT },
-		{ "default-client-cert-request", no_argument,       0, ARG_DEFAULT_CLIENT_CERT_REQUEST },
-		{ "default-client-cert",         required_argument, 0, ARG_DEFAULT_CLIENT_CERT },
 		{ "mark-forged-certificates",    no_argument,       0, ARG_MARK_FORGED_CERTIFICATES },
 		{ "no-recalculate-keyids",       no_argument,       0, ARG_NO_RECALCULATE_KEYIDS },
 		{ "daemonize",                   no_argument,       0, ARG_DAEMONIZE },
@@ -445,6 +386,7 @@ bool parse_options(int argc, char **argv) {
 		{ "ocsp-uri",                    required_argument, 0, ARG_OCSP_URI },
 		{ "write-memdumps-into-files",   no_argument,       0, ARG_WRITE_MEMDUMPS_INTO_FILES },
 		{ "listen",                      required_argument, 0, ARG_LISTEN },
+		{ "defaults",                    required_argument, 0, ARG_DEFAULTS },
 		{ "intercept",                   required_argument, 0, ARG_INTERCEPT },
 		{ "pcap-comment",                required_argument, 0, ARG_PCAP_COMMENT },
 		{ "outfile",                     required_argument, 0, ARG_OUTFILE },
@@ -498,24 +440,6 @@ bool parse_options(int argc, char **argv) {
 				}
 				break;
 
-			case ARG_REJECT_UNKNOWN_TRAFFIC:
-				pgm_options_rw.reject_unknown_traffic = true;
-				break;
-
-			case ARG_DEFAULT_NO_INTERCEPT:
-				pgm_options_rw.default_client.do_intercept = false;
-				break;
-
-			case ARG_DEFAULT_CLIENT_CERT_REQUEST:
-				pgm_options_rw.default_client.request_client_cert = true;
-				break;
-
-			case ARG_DEFAULT_CLIENT_CERT:
-				if (!parse_trusted_client_cert(optarg)) {
-					return false;
-				}
-				break;
-
 			case ARG_MARK_FORGED_CERTIFICATES:
 				pgm_options_rw.mark_forged_certificates = true;
 				break;
@@ -556,9 +480,17 @@ bool parse_options(int argc, char **argv) {
 				}
 				break;
 
+			case ARG_DEFAULTS_SHORT:
+			case ARG_DEFAULTS:
+				pgm_options_rw.default_config = parse_intercept_config(optarg, false);
+				if (!pgm_options_rw.default_config) {
+					return false;
+				}
+				break;
+
 			case ARG_INTERCEPT_SHORT:
 			case ARG_INTERCEPT:
-				if (!add_intercept_hostname(optarg)) {
+				if (!append_custom_intercept_config(optarg)) {
 					return false;
 				}
 				break;
@@ -605,11 +537,9 @@ static void freenull(char **argument) {
 void free_pgm_options(void) {
 	freenull(&pgm_options_rw.config_dir);
 
+	free_intercept_config(&pgm_options_rw.default_config);
 	for (int i = 0; i < pgm_options_rw.intercept.count; i++) {
-		free(pgm_options_rw.intercept.config[i].hostname);
-		free(pgm_options_rw.intercept.config[i].client_cert_filename);
-		free(pgm_options_rw.intercept.config[i].client_key_filename);
-		free(pgm_options_rw.intercept.config[i].client_chain_filename);
+		free_intercept_config(&pgm_options_rw.intercept.config[i]);
 	}
 	free(pgm_options_rw.intercept.config);
 	pgm_options_rw.intercept.config = NULL;
@@ -618,8 +548,4 @@ void free_pgm_options(void) {
 	if ((pgm_options_rw.keyspec.keytype == KEYTYPE_ECC) && pgm_options_rw.keyspec.ecc.curvename) {
 		freenull(&pgm_options_rw.keyspec.ecc.curvename);
 	}
-
-	freenull(&pgm_options_rw.default_client.client_cert_filename);
-	freenull(&pgm_options_rw.default_client.client_key_filename);
-	freenull(&pgm_options_rw.default_client.client_chain_filename);
 }

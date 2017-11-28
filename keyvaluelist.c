@@ -29,7 +29,7 @@
 #include "logging.h"
 #include "parse.h"
 
-bool keyvalue_string(char *element, void *vresult) {
+bool keyvalue_string(char *element, void *argument, void *vresult) {
 	char **result = (char**)vresult;
 	*result = strdup(element);
 	if (!*result) {
@@ -38,18 +38,18 @@ bool keyvalue_string(char *element, void *vresult) {
 	return true;
 }
 
-bool keyvalue_longint(char *element, void *vresult) {
+bool keyvalue_longint(char *element, void *argument, void *vresult) {
 	const char *string = element;
 	long int *result = (long int*)vresult;
 	return safe_strtol(&string, result, false);
 }
 
-bool keyvalue_ipv4_nbo(char *element, void *vresult) {
+bool keyvalue_ipv4_nbo(char *element, void *argument, void *vresult) {
 	uint32_t *result = (uint32_t*)vresult;
 	return parse_ipv4(element, result);
 }
 
-bool keyvalue_bool(char *element, void *vresult) {
+bool keyvalue_bool(char *element, void *argument, void *vresult) {
 	bool *result = (bool*)vresult;
 	if (!strcmp(element, "0") || !strcmp(element, "off") || !strcmp(element, "false") || !strcmp(element, "no")) {
 		*result = false;
@@ -61,6 +61,31 @@ bool keyvalue_bool(char *element, void *vresult) {
 		logmsg(LLVL_ERROR, "Not a boolean value: %s", element);
 	}
 	return false;
+}
+
+bool keyvalue_lookup(char *element, void *argument, void *vresult) {
+	const struct lookup_entry_t *table = (const struct lookup_entry_t *)argument;
+	int *result = (int*)vresult;
+	if (!argument) {
+		logmsg(LLVL_FATAL, "Programming error: keyvalue_lookup() requested, but no lookup table specified.");
+		return false;
+	}
+	/* TODO: -Wuninitialized didn't find the bug when success wasn't initialized -- why?! */
+	//bool success;
+	bool success = false;
+	while (table->key) {
+		if (!strcmp(table->key, element)) {
+			/* Match! */
+			*result = table->value;
+			success = true;
+			break;
+		}
+		table++;
+	}
+	if (!success) {
+		logmsg(LLVL_ERROR, "'%s' is not a valid element for this type.", element);
+	}
+	return success;
 }
 
 static struct keyvaluelist_def_t *find_keyvalue_def(const char *element, struct keyvaluelist_def_t *elements) {
@@ -117,7 +142,7 @@ int parse_keyvalues_from_list(struct stringlist_t *list, unsigned int startindex
 			return -1;
 		}
 
-		if (!match->parser(value, match->target)) {
+		if (!match->parser(value, match->argument, match->target)) {
 			logmsg(LLVL_ERROR, "Could not successfully parse key/value element number %d (\"%s\") as the requested type.", i + 1, list->tokens[i]);
 			return -1;
 		}

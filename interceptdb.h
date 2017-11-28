@@ -25,12 +25,14 @@
 #define __INTERCEPTDB_H__
 
 #include "openssl_certs.h"
+#include "intercept_config.h"
 
 struct intercept_entry_t {
 	const char *hostname;
-	bool do_intercept;
-	struct tls_endpoint_config_t server;
-	struct tls_endpoint_config_t client;
+	uint32_t ipv4_nbo;
+	enum interception_mode_t interception_mode;
+	struct tls_endpoint_config_t server_template;
+	struct tls_endpoint_config_t client_template;
 };
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/

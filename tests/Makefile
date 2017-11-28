@@ -38,18 +38,18 @@ TEST_MANUAL_OBJS := \
 all: $(TEST_COMMON_OBJS) $(TEST_OBJS) $(TEST_MANUAL_OBJS)
 
 test_keyvaluelist: $(TEST_COMMON_OBJS) keyvaluelist.o stringlist.o parse.o helper_logging.o
-test_ocsp: $(TEST_COMMON_OBJS) helper_logging.o openssl.o ocsp_response.o openssl_certs.o errstack.o
-test_openssl_certs: $(TEST_COMMON_OBJS) openssl_certs.o openssl.o helper_logging.o errstack.o
+test_ocsp: $(TEST_COMMON_OBJS) helper_logging.o openssl.o ocsp_response.o openssl_certs.o errstack.o tools.o atomic.o openssl_clienthello.o
+test_openssl_certs: $(TEST_COMMON_OBJS) openssl_certs.o openssl.o helper_logging.o errstack.o tools.o atomic.o openssl_clienthello.o
 test_openssl_clienthello: $(TEST_COMMON_OBJS) openssl_clienthello.o openssl.o helper_logging.o
-test_openssl_tls: $(TEST_COMMON_OBJS) openssl_tls.o ocsp_response.o errstack.o openssl_certs.o openssl.o helper_logging.o ipfwd.o atomic.o thread.o
+test_openssl_tls: $(TEST_COMMON_OBJS) openssl_tls.o ocsp_response.o errstack.o openssl_certs.o openssl.o helper_logging.o ipfwd.o atomic.o thread.o openssl_clienthello.o tools.o
 test_parse: $(TEST_COMMON_OBJS) helper_logging.o parse.o stringlist.o
 test_pcapng: $(TEST_COMMON_OBJS) pcapng.o helper_logging.o
 test_stringlist: $(TEST_COMMON_OBJS) stringlist.o
-test_tcpip: $(TEST_COMMON_OBJS) tcpip.o pcapng.o helper_logging.o
+test_tcpip: $(TEST_COMMON_OBJS) tcpip.o pcapng.o helper_logging.o tools.o
 test_tools: $(TEST_COMMON_OBJS) tools.o helper_logging.o
 
-mantest_openssl_sclient: $(TEST_COMMON_OBJS) openssl_tls.o ocsp_response.o errstack.o openssl.o helper_logging.o ipfwd.o
-mantest_openssl_sserver: $(TEST_COMMON_OBJS) openssl_tls.o ocsp_response.o errstack.o openssl_certs.o openssl.o helper_logging.o ipfwd.o
+mantest_openssl_sclient: $(TEST_COMMON_OBJS) openssl_tls.o ocsp_response.o errstack.o openssl.o helper_logging.o ipfwd.o atomic.o openssl_clienthello.o tools.o
+mantest_openssl_sserver: $(TEST_COMMON_OBJS) openssl_tls.o ocsp_response.o errstack.o openssl_certs.o openssl.o helper_logging.o ipfwd.o atomic.o openssl_clienthello.o tools.o
 
 test: all
 	rm -f tests.log

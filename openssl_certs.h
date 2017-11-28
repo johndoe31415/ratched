@@ -53,9 +53,15 @@ struct keyspec_t {
 
 struct tls_endpoint_config_t {
 	bool request_cert_from_peer;
+	const char *ciphersuites;
+	const char *supported_groups;
 	X509 *cert;
 	EVP_PKEY *key;
 	STACK_OF(X509) *chain;
+	struct {
+		X509 *cert;
+		EVP_PKEY *key;
+	} certificate_authority;
 	struct {
 		X509 *cert;
 		EVP_PKEY *key;
@@ -66,6 +72,10 @@ struct tls_endpoint_cert_source_t {
 	const char *cert_filename;
 	const char *key_filename;
 	const char *chain_filename;
+	struct {
+		const char *cert_filename;
+		const char *key_filename;
+	} certificate_authority;
 };
 
 struct certificatespec_t {
@@ -97,6 +107,7 @@ bool add_extension_rawstr(X509 *cert, bool critical, int nid, const char *text);
 X509* openssl_create_certificate(const struct certificatespec_t *spec);
 X509* openssl_load_stored_certificate(const struct certificatespec_t *certspec, const char *filename, bool recreate_when_expired, bool recreate_when_key_mismatch);
 X509 *forge_client_certificate(X509 *original_client_cert, EVP_PKEY *new_subject_pubkey, X509 *new_issuer_cert, EVP_PKEY *new_issuer_privkey, bool recalculate_key_identifiers, bool mark_certificate);
+void dump_tls_endpoint_config(char *text, int text_maxlen, const struct tls_endpoint_config_t *config);
 bool init_tls_endpoint_config(struct tls_endpoint_config_t *config, const char *description, const struct tls_endpoint_cert_source_t *certsrc);
 void free_tls_endpoint_config(struct tls_endpoint_config_t *config);
 /***************  AUTO GENERATED SECTION ENDS   ***************/

@@ -142,6 +142,22 @@ struct tls_connection_t openssl_tls_connect(const struct tls_connection_request_
 		}
 	}
 
+	if (request->config && request->config->ciphersuites) {
+		if (!SSL_CTX_set_cipher_list(sslctx, request->config->ciphersuites)) {
+			logmsgext(LLVL_ERROR, FLAG_OPENSSL_ERROR, "openssl_tls %s: SSL_CTX_set_cipher_list(%s) failed.", request->is_server ? "server" : "client", request->config->ciphersuites);
+			SSL_CTX_free(sslctx);
+			return result;
+		}
+	}
+
+	if (request->config && request->config->supported_groups) {
+		if (!SSL_CTX_set1_curves_list(sslctx, request->config->supported_groups)) {
+			logmsgext(LLVL_ERROR, FLAG_OPENSSL_ERROR, "openssl_tls %s: SSL_CTX_set1_curves_list(%s) failed.", request->is_server ? "server" : "client", request->config->supported_groups);
+			SSL_CTX_free(sslctx);
+			return result;
+		}
+	}
+
 	/* If a server, set a status request callback as well */
 	if (request->is_server) {
 		if (!SSL_CTX_set_tlsext_status_cb(sslctx, ocsp_status_request_callback)) {

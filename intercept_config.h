@@ -21,23 +21,47 @@
  *	Johannes Bauer <JohannesBauer@gmx.de>
 **/
 
-#ifndef __CERTFORGERY_H__
-#define __CERTFORGERY_H__
+#ifndef __INTERCEPT_CONFIG_H__
+#define __INTERCEPT_CONFIG_H__
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <openssl/x509.h>
-#include <openssl/evp.h>
+
+enum interception_mode_t {
+	OPPORTUNISTIC_TLS_INTERCEPTION,
+	MANDATORY_TLS_INTERCEPTION,
+	TRAFFIC_FORWARDING,
+	REJECT_CONNECTION,
+};
+
+struct intercept_side_config_t {
+	// Makes only sense for 'server', but easier this way.
+	bool request_client_cert;
+
+	char *cert_filename;
+	char *key_filename;
+	char *chain_filename;
+
+	char *ca_cert_filename;
+	char *ca_key_filename;
+
+	char *ciphersuites;
+	char *supported_groups;
+};
+
+struct intercept_config_t {
+	char *hostname;
+	uint32_t ipv4_nbo;
+	enum interception_mode_t interception_mode;
+	struct intercept_side_config_t server;
+	struct intercept_side_config_t client;
+};
+
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
-struct server_certificate_t;
-bool certforgery_init(void);
-X509 *get_forged_root_certificate(void);
-EVP_PKEY *get_forged_root_key(void);
-EVP_PKEY *get_tls_server_key(void);
-EVP_PKEY *get_tls_client_key(void);
-X509 *forge_certificate_for_server(const char *hostname, uint32_t ipv4_nbo);
-void certforgery_deinit(void);
+const char *interception_mode_to_str(enum interception_mode_t value);
+struct intercept_config_t* parse_intercept_config(const char *connection_params, bool contains_hostname);
+void free_intercept_config(struct intercept_config_t **pconfig);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif

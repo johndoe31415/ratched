@@ -62,10 +62,31 @@ static void test_pathtok(void) {
 	subtest_finished();
 }
 
+static void test_spnprintf(void) {
+	subtest_start();
+	char foo[8];
+	char *buf = foo;
+	int len = 8;
+	buf = spnprintf(buf, &len, "foo");
+	test_assert_str_eq(foo, "foo");
+	buf = spnprintf(buf, &len, "b");
+	test_assert_str_eq(foo, "foob");
+	buf = spnprintf(buf, &len, "a");
+	test_assert_str_eq(foo, "fooba");
+	buf = spnprintf(buf, &len, "r");
+	test_assert_str_eq(foo, "foobar");
+	buf = spnprintf(buf, &len, "123456");
+	test_assert_str_eq(foo, "foobar1");
+	buf = spnprintf(buf, &len, "XXXXXXXX");
+	test_assert_str_eq(foo, "foobar1");
+	subtest_finished();
+}
+
 int main(int argc, char **argv) {
 	test_start(argc, argv);
 	test_strxcat();
 	test_pathtok();
+	test_spnprintf();
 	test_finished();
 	return 0;
 }

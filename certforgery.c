@@ -196,10 +196,12 @@ bool certforgery_init(void) {
 }
 
 X509 *get_forged_root_certificate(void) {
+	X509_up_ref(root_ca);
 	return root_ca;
 }
 
 EVP_PKEY *get_forged_root_key(void) {
+	EVP_PKEY_up_ref(root_ca_key);
 	return root_ca_key;
 }
 

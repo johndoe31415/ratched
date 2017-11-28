@@ -34,6 +34,7 @@
 #include "openssl.h"
 #include "openssl_certs.h"
 #include "errstack.h"
+#include "tools.h"
 
 EVP_PKEY* openssl_create_key(const struct keyspec_t *keyspec) {
 	struct errstack_t es = { 0 };
@@ -431,6 +432,19 @@ X509 *forge_client_certificate(X509 *original_client_cert, EVP_PKEY *new_subject
 	return forgery;
 }
 
+void dump_tls_endpoint_config(char *text, int text_maxlen, const struct tls_endpoint_config_t *config) {
+	if (text_maxlen == 0) {
+		return;
+	}
+	char *buf = text;
+	buf = spnprintf(buf, &text_maxlen, "[%1s%1s", config->cert ? "C" : "", config->key ? "K" : "");
+	if (config->chain && sk_X509_num(config->chain)) {
+		buf = spnprintf(buf, &text_maxlen, "~%d", sk_X509_num(config->chain));
+	}
+	buf = spnprintf(buf, &text_maxlen, "], CA [%1s%1s], ", config->certificate_authority.cert ? "C" : "", config->certificate_authority.key ? "K" : "");
+	buf = spnprintf(buf, &text_maxlen, "Req=%d CS=%d SG=%d", config->request_cert_from_peer ? 1 : 0, config->ciphersuites ? 1 : 0, config->supported_groups ? 1 : 0);
+}
+
 bool init_tls_endpoint_config(struct tls_endpoint_config_t *config, const char *description, const struct tls_endpoint_cert_source_t *certsrc) {
 	if (certsrc->cert_filename) {
 		config->cert = openssl_load_cert(certsrc->cert_filename, description, false);
@@ -457,6 +471,10 @@ void free_tls_endpoint_config(struct tls_endpoint_config_t *config) {
 	X509_free(config->cert);
 	EVP_PKEY_free(config->key);
 	sk_X509_pop_free(config->chain, X509_free);
+	X509_free(config->certificate_authority.cert);
+	EVP_PKEY_free(config->certificate_authority.key);
+	X509_free(config->ocsp_responder.cert);
+	EVP_PKEY_free(config->ocsp_responder.key);
 	config->cert = NULL;
 	config->key = NULL;
 	config->chain = NULL;

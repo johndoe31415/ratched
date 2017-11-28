@@ -120,3 +120,21 @@ bool strxcat(char *dest, int bufsize, ...) {
 	va_end(ap);
 	return success;
 }
+
+char *spnprintf(char *buf, int *size, const char *fmt, ...) {
+	if (*size <= 0) {
+		return buf;
+	}
+
+	va_list ap;
+	va_start(ap, fmt);
+	int chars = vsnprintf(buf, *size, fmt, ap);
+	va_end(ap);
+
+	if (chars > *size) {
+		chars = *size;
+	}
+	*size -= chars;
+	return buf + chars;
+}
+
