@@ -1,5 +1,6 @@
 tests.log
 
+test_hostname_ids
 test_keyvaluelist
 test_ocsp
 test_openssl_certs

@@ -50,6 +50,7 @@
 #include "interceptdb.h"
 #include "errstack.h"
 #include "openssl.h"
+#include "hostname_ids.h"
 
 static struct atomic_t active_client_connections;
 static bool quit;
@@ -198,6 +199,7 @@ static void start_tls_forwarding(struct intercept_entry_t *decision, const struc
 				.ip_nbo = ctx->destination_ip_nbo,
 				.port_nbo = ctx->destination_port_nbo,
 				.hostname = preliminary_data->parsed_data.server_name_indication,
+				.hostname_id = resolve_hostname_id(ctx->destination_ip_nbo, preliminary_data->parsed_data.server_name_indication),
 			},
 			.connector = {
 				.ip_nbo = ctx->source_ip_nbo,

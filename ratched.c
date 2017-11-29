@@ -32,6 +32,7 @@
 #include "shutdown.h"
 #include "daemonize.h"
 #include "interceptdb.h"
+#include "hostname_ids.h"
 
 int main(int argc, char **argv) {
 	if (!parse_options(argc, argv)) {
@@ -50,6 +51,8 @@ int main(int argc, char **argv) {
 		logmsg(LLVL_FATAL, "Could not install shutdown handler.");
 		exit(EXIT_FAILURE);
 	}
+
+	init_hostname_ids();
 
 	struct multithread_dumper_t mtdump;
 	if (!open_pcap_write(&mtdump, pgm_options->pcapng.filename, pgm_options->pcapng.comment)) {
@@ -75,9 +78,9 @@ int main(int argc, char **argv) {
 		logmsg(LLVL_FATAL, "Cannot continue without proper certificates and keys.");
 	}
 
-
 	openssl_deinit();
 	close_pcap(&mtdump);
+	deinit_hostname_ids();
 	free_pgm_options();
 
 	return 0;
