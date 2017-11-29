@@ -67,7 +67,7 @@
 
 #define NRB_RECORD_END					0
 #define NRB_RECORD_IPv4					1
-#define NRV_RECORD_IPv6					2
+#define NRB_RECORD_IPv6					2
 
 #define ROUND_UP(x)					((((x) + 3) / 4) * 4)
 
@@ -243,27 +243,28 @@ bool pcapng_write_idb(FILE *f, uint16_t linktype, uint32_t snaplen, const char *
 	return success;
 }
 
-bool pcapng_write_nrb_ipv4(FILE *f, const uint32_t ipv4_nbo, const char *hostname) {
+bool pcapng_write_nrb(FILE *f, const void *address, const char *hostname, bool is_ipv4) {
+	int addrlen = is_ipv4 ? 4 : 16;
+
 	int hlen = strlen(hostname) + 1;
 	struct pcapng_block_hdr_t hdr = {
 		.blocktype = PCAPNG_BLOCKTYPE_NRB,
-		.blocklength = sizeof(hdr) + sizeof(struct pcapng_namerecord_t) + 4 + ROUND_UP(hlen) + 4 + 4,
+		.blocklength = sizeof(hdr) + sizeof(struct pcapng_namerecord_t) + addrlen + ROUND_UP(hlen) + 4 + 4,
 	};
 	if (fwrite(&hdr, sizeof(hdr), 1, f) != 1) {
 		return false;
 	}
 
 	struct pcapng_namerecord_t namerecord = {
-		.rectype = NRB_RECORD_IPv4,
-		.length = 4 + hlen,
+		.rectype = is_ipv4 ? NRB_RECORD_IPv4 : NRB_RECORD_IPv6,
+		.length = addrlen + hlen,
 	};
 	if (fwrite(&namerecord, sizeof(namerecord), 1, f) != 1) {
 		return false;
 	}
-	for (int i = 0; i < 4; i++) {
-		if (fwrite(((uint8_t*)&ipv4_nbo) + i, sizeof(uint8_t), 1, f) != 1) {
-			return false;
-		}
+
+	if (fwrite(address, addrlen, 1, f) != 1) {
+		return false;
 	}
 	if (fwrite(hostname, hlen, 1, f) != 1) {
 		return false;

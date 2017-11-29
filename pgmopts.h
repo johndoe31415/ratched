@@ -38,6 +38,7 @@ struct pgmopts_t {
 	struct {
 		const char *filename;
 		const char *comment;
+		bool use_ipv6_encapsulation;
 	} pcapng;
 	struct {
 		enum loglvl_t level;

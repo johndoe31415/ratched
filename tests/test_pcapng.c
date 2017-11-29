@@ -32,7 +32,8 @@ static void test_pcapng_simple(void) {
 	test_assert(f);
 	test_assert(pcapng_write_shb(f, NULL));
 	test_assert(pcapng_write_idb(f, LINKTYPE_RAW, 65535, "eth0", "My network interface"));
-	test_assert(pcapng_write_nrb_ipv4(f, 0x11223344, "www.foobar.com"));
+	uint32_t ip = 0x11223344;
+	test_assert(pcapng_write_nrb(f, &ip, "www.foobar.com", true));
 	test_assert(pcapng_write_epb(f, (const uint8_t*)"foobar packet", 5, "my comment"));
 	fclose(f);
 	subtest_finished();

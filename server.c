@@ -206,7 +206,7 @@ static void start_tls_forwarding(struct intercept_entry_t *decision, const struc
 		};
 		char comment[256];
 		snprintf(comment, sizeof(comment), "%zd bytes ClientHello, Server Name Indication %s, " PRI_IPv4 ":%u", preliminary_data->data_length, preliminary_data->parsed_data.server_name_indication ? preliminary_data->parsed_data.server_name_indication : "not present", FMT_IPv4(conn.acceptor.ip_nbo), ntohs(conn.acceptor.port_nbo));
-		create_tcp_ip_connection(ctx->mtdump, &conn, comment);
+		create_tcp_ip_connection(ctx->mtdump, &conn, comment, pgm_options->pcapng.use_ipv6_encapsulation);
 		tls_forward_data(accepted_ssl.ssl, connected_ssl.ssl, &conn);
 		teardown_tcp_ip_connection(&conn, false);
 	} else {

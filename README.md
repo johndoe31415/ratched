@@ -51,9 +51,9 @@ usage: ratched [-c path] [-f hostname:port] [--single-shot] [--dump-certs]
                [--mark-forged-certificates] [--no-recalculate-keyids]
                [--daemonize] [--logfile file] [--flush-logs] [--crl-uri uri]
                [--ocsp-uri uri] [--write-memdumps-into-files]
-               [-l hostname:port] [-d key=value[,key=value,...]]
-               [-i hostname[,key=value,...]] [--pcap-comment comment]
-               [-o filename] [-v]
+               [--use-ipv6-encapsulation] [-l hostname:port]
+               [-d key=value[,key=value,...]] [-i hostname[,key=value,...]]
+               [--pcap-comment comment] [-o filename] [-v]
 
 ratched - TLS connection router that performs a man-in-the-middle attack
 
@@ -112,6 +112,15 @@ optional arguments:
                         its binary equivalent into a file called
                         hexdump_####.bin, where #### is an ascending number.
                         Useful for debugging of internal data structures.
+  --use-ipv6-encapsulation
+                        For writing the PCAPNG file format, usually IPv4 is
+                        emulated. This has the drawback that when one IPv4
+                        endpoint serves multiple servers via the TLS Server
+                        Name Indication extension, they cannot be
+                        differentiated by their hostname. With this parameter,
+                        ratched wraps the packets in IPv4-in-IPv6 emulation
+                        and assigns different IPv6 addresses for different
+                        server names, thus enabling accurate name resolution.
   -l hostname:port, --listen hostname:port
                         Specify the address and port that ratched is listening
                         on. Defaults to 127.0.0.1:9999.

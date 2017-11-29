@@ -33,7 +33,7 @@
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
 bool pcapng_write_shb(FILE *f, const char *comment);
 bool pcapng_write_idb(FILE *f, uint16_t linktype, uint32_t snaplen, const char *ifname, const char *ifdesc);
-bool pcapng_write_nrb_ipv4(FILE *f, const uint32_t ipv4_nbo, const char *hostname);
+bool pcapng_write_nrb(FILE *f, const void *address, const char *hostname, bool is_ipv4);
 bool pcapng_write_epb(FILE *f, const uint8_t *payload, unsigned int payload_length, const char *comment);
 FILE *pcapng_open(const char *filename, uint16_t linktype, uint32_t snaplen, const char *comment);
 /***************  AUTO GENERATED SECTION ENDS   ***************/

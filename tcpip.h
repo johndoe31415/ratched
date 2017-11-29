@@ -35,24 +35,28 @@ struct multithread_dumper_t {
 };
 
 struct connection_t {
+	bool ipv6_encapsulation;
 	struct multithread_dumper_t *mtdump;
 	struct {
 		uint32_t ip_nbo;
 		uint16_t port_nbo;
 		uint32_t seqno;
 		const char *hostname;
+		uint16_t hostname_id;
 	} connector;
 	struct {
 		uint32_t ip_nbo;
 		uint16_t port_nbo;
 		uint32_t seqno;
 		const char *hostname;
+		uint16_t hostname_id;
 	} acceptor;
 };
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
-void create_tcp_ip_connection(struct multithread_dumper_t *mtdump, struct connection_t *conn, const char *comment);
+void create_tcp_ip_connection(struct multithread_dumper_t *mtdump, struct connection_t *conn, const char *comment, bool use_ipv6_encapsulation);
 void append_tcp_ip_data(struct connection_t *conn, bool direction, const uint8_t *payload, int payload_len);
+void append_tcp_ip_string(struct connection_t *conn, bool direction, const char *string);
 void teardown_tcp_ip_connection(struct connection_t *conn, bool direction);
 bool open_pcap_write(struct multithread_dumper_t *mtdump, const char *filename, const char *comment);
 bool close_pcap(struct multithread_dumper_t *mtdump);

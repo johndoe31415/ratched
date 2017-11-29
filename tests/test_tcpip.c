@@ -23,6 +23,7 @@
 
 #include "testbed.h"
 #include <tcpip.h>
+#include <ipfwd.h>
 #include <arpa/inet.h>
 
 static void test_tcpip(void) {
@@ -30,39 +31,100 @@ static void test_tcpip(void) {
 	struct multithread_dumper_t dumper;
 	test_assert(open_pcap_write(&dumper, "tcpip.pcapng", NULL));
 
-	struct connection_t conn = {
-		.connector = {
-			.ip_nbo = 0x11223344,
-			.port_nbo = htons(12378),
-		},
-		.acceptor = {
-			.ip_nbo = 0xaabbccdd,
-			.port_nbo = htons(80),
-		},
-	};
-
-	create_tcp_ip_connection(&dumper, &conn, "comment");
-	append_tcp_ip_data(&conn, true, (unsigned char*)"foobar", 6);
-	append_tcp_ip_data(&conn, true, (unsigned char*)"foobar", 6);
-	append_tcp_ip_data(&conn, true, (unsigned char*)"foobar", 6);
-	append_tcp_ip_data(&conn, true, (unsigned char*)"foobar", 6);
-	append_tcp_ip_data(&conn, true, (unsigned char*)"foobar", 6);
-	append_tcp_ip_data(&conn, false, (unsigned char*)"moep!!", 6);
-	append_tcp_ip_data(&conn, false, (unsigned char*)"moep!!", 6);
-	teardown_tcp_ip_connection(&conn, true);
-
-#if 1
-	conn.connector.ip_nbo = 0x99887766;
-	create_tcp_ip_connection(&dumper, &conn, "second connection");
-	append_tcp_ip_data(&conn, true, (unsigned char*)"foobar", 6);
-	append_tcp_ip_data(&conn, true, (unsigned char*)"foobar", 6);
-	append_tcp_ip_data(&conn, true, (unsigned char*)"foobar", 6);
-	append_tcp_ip_data(&conn, true, (unsigned char*)"foobar", 6);
-	append_tcp_ip_data(&conn, true, (unsigned char*)"foobar", 6);
-	append_tcp_ip_data(&conn, false, (unsigned char*)"moep!!", 6);
-	teardown_tcp_ip_connection(&conn, true);
-#endif
-
+	{
+		struct connection_t conn = {
+			.connector = {
+				.ip_nbo = htonl(IPv4ADDR(1, 2, 3, 4)),
+				.port_nbo = htons(2000),
+			},
+			.acceptor = {
+				.ip_nbo = htonl(IPv4ADDR(11, 22, 33, 44)),
+				.port_nbo = htons(80),
+			},
+		};
+		create_tcp_ip_connection(&dumper, &conn, "IPv4 without hostnames", false);
+		append_tcp_ip_string(&conn, true, "foobar\n");
+		append_tcp_ip_string(&conn, false, "moep!!\n");
+		append_tcp_ip_string(&conn, true, "foobar?\n");
+		append_tcp_ip_string(&conn, false, "moep!! troet.\n");
+		teardown_tcp_ip_connection(&conn, true);
+	}
+	{
+		struct connection_t conn = {
+			.connector = {
+				.ip_nbo = htonl(IPv4ADDR(1, 2, 3, 4)),
+				.port_nbo = htons(2001),
+				.hostname = "ipv4.smally",
+			},
+			.acceptor = {
+				.ip_nbo = htonl(IPv4ADDR(11, 22, 33, 44)),
+				.port_nbo = htons(80),
+				.hostname = "ipv4.large",
+			},
+		};
+		create_tcp_ip_connection(&dumper, &conn, "IPv4 without hostnames", false);
+		append_tcp_ip_string(&conn, true, "foobar\n");
+		append_tcp_ip_string(&conn, false, "moep!!\n");
+		append_tcp_ip_string(&conn, true, "foobar?\n");
+		append_tcp_ip_string(&conn, false, "moep!! troet.\n");
+		teardown_tcp_ip_connection(&conn, true);
+	}
+	{
+		struct connection_t conn = {
+			.connector = {
+				.ip_nbo = htonl(IPv4ADDR(1, 2, 3, 4)),
+				.port_nbo = htons(2002),
+				.hostname = "kleine.zahlen",
+				.hostname_id = 1234,
+			},
+			.acceptor = {
+				.ip_nbo = htonl(IPv4ADDR(11, 22, 33, 44)),
+				.port_nbo = htons(80),
+				.hostname = "grosse.zahlen",
+				.hostname_id = 987,
+			},
+		};
+		create_tcp_ip_connection(&dumper, &conn, "IPv6 with hostname records", true);
+		append_tcp_ip_string(&conn, true, "foobar\n");
+		append_tcp_ip_string(&conn, false, "moep!!\n");
+		teardown_tcp_ip_connection(&conn, true);
+	}
+	{
+		struct connection_t conn = {
+			.connector = {
+				.ip_nbo = htonl(IPv4ADDR(1, 2, 3, 4)),
+				.port_nbo = htons(2003),
+				.hostname = "neue.kleine.zahlen",
+				.hostname_id = 1235,
+			},
+			.acceptor = {
+				.ip_nbo = htonl(IPv4ADDR(11, 22, 33, 44)),
+				.port_nbo = htons(80),
+				.hostname = "neue.grosse.zahlen",
+				.hostname_id = 988,
+			},
+		};
+		create_tcp_ip_connection(&dumper, &conn, "IPv6 with different hostname records", true);
+		append_tcp_ip_string(&conn, true, "foobar\n");
+		append_tcp_ip_string(&conn, false, "moep!!\n");
+		teardown_tcp_ip_connection(&conn, true);
+	}
+	{
+		struct connection_t conn = {
+			.connector = {
+				.ip_nbo = htonl(IPv4ADDR(1, 2, 3, 4)),
+				.port_nbo = htons(2004),
+			},
+			.acceptor = {
+				.ip_nbo = htonl(IPv4ADDR(11, 22, 33, 44)),
+				.port_nbo = htons(80),
+			},
+		};
+		create_tcp_ip_connection(&dumper, &conn, "IPv6 without hostnames", true);
+		append_tcp_ip_string(&conn, true, "foobar\n");
+		append_tcp_ip_string(&conn, false, "moep!!\n");
+		teardown_tcp_ip_connection(&conn, true);
+	}
 	close_pcap(&dumper);
 	subtest_finished();
 }

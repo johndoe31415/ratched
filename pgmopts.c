@@ -67,9 +67,9 @@ void show_syntax(const char *pgmbinary) {
 	fprintf(stderr, "               [--mark-forged-certificates] [--no-recalculate-keyids]\n");
 	fprintf(stderr, "               [--daemonize] [--logfile file] [--flush-logs] [--crl-uri uri]\n");
 	fprintf(stderr, "               [--ocsp-uri uri] [--write-memdumps-into-files]\n");
-	fprintf(stderr, "               [-l hostname:port] [-d key=value[,key=value,...]]\n");
-	fprintf(stderr, "               [-i hostname[,key=value,...]] [--pcap-comment comment]\n");
-	fprintf(stderr, "               [-o filename] [-v]\n");
+	fprintf(stderr, "               [--use-ipv6-encapsulation] [-l hostname:port]\n");
+	fprintf(stderr, "               [-d key=value[,key=value,...]] [-i hostname[,key=value,...]]\n");
+	fprintf(stderr, "               [--pcap-comment comment] [-o filename] [-v]\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "ratched - TLS connection router that performs a man-in-the-middle attack\n");
 	fprintf(stderr, "\n");
@@ -128,6 +128,15 @@ void show_syntax(const char *pgmbinary) {
 	fprintf(stderr, "                        its binary equivalent into a file called\n");
 	fprintf(stderr, "                        hexdump_####.bin, where #### is an ascending number.\n");
 	fprintf(stderr, "                        Useful for debugging of internal data structures.\n");
+	fprintf(stderr, "  --use-ipv6-encapsulation\n");
+	fprintf(stderr, "                        For writing the PCAPNG file format, usually IPv4 is\n");
+	fprintf(stderr, "                        emulated. This has the drawback that when one IPv4\n");
+	fprintf(stderr, "                        endpoint serves multiple servers via the TLS Server\n");
+	fprintf(stderr, "                        Name Indication extension, they cannot be\n");
+	fprintf(stderr, "                        differentiated by their hostname. With this parameter,\n");
+	fprintf(stderr, "                        ratched wraps the packets in IPv4-in-IPv6 emulation\n");
+	fprintf(stderr, "                        and assigns different IPv6 addresses for different\n");
+	fprintf(stderr, "                        server names, thus enabling accurate name resolution.\n");
 	fprintf(stderr, "  -l hostname:port, --listen hostname:port\n");
 	fprintf(stderr, "                        Specify the address and port that ratched is listening\n");
 	fprintf(stderr, "                        on. Defaults to 127.0.0.1:9999.\n");
@@ -277,6 +286,7 @@ enum cmdline_arg_t {
 	ARG_CRL_URI,
 	ARG_OCSP_URI,
 	ARG_WRITE_MEMDUMPS_INTO_FILES,
+	ARG_USE_IPV6_ENCAPSULATION,
 	ARG_LISTEN,
 	ARG_DEFAULTS,
 	ARG_INTERCEPT,
@@ -385,6 +395,7 @@ bool parse_options(int argc, char **argv) {
 		{ "crl-uri",                     required_argument, 0, ARG_CRL_URI },
 		{ "ocsp-uri",                    required_argument, 0, ARG_OCSP_URI },
 		{ "write-memdumps-into-files",   no_argument,       0, ARG_WRITE_MEMDUMPS_INTO_FILES },
+		{ "use-ipv6-encapsulation",      no_argument,       0, ARG_USE_IPV6_ENCAPSULATION },
 		{ "listen",                      required_argument, 0, ARG_LISTEN },
 		{ "defaults",                    required_argument, 0, ARG_DEFAULTS },
 		{ "intercept",                   required_argument, 0, ARG_INTERCEPT },
@@ -470,6 +481,10 @@ bool parse_options(int argc, char **argv) {
 
 			case ARG_WRITE_MEMDUMPS_INTO_FILES:
 				pgm_options_rw.write_memdumps_into_files = true;
+				break;
+
+			case ARG_USE_IPV6_ENCAPSULATION:
+				pgm_options_rw.pcapng.use_ipv6_encapsulation = true;
 				break;
 
 			case ARG_LISTEN_SHORT:
