@@ -217,3 +217,11 @@ void free_client_hello(struct chello_t *chello) {
 	free(chello->server_name_indication);
 	chello->server_name_indication = NULL;
 }
+
+static void errstack_free_client_hello(struct errstack_element_t *element) {
+	free_client_hello((struct chello_t*)element->ptrvalue);
+}
+
+void errstack_push_client_hello(struct errstack_t *errstack, struct chello_t *element) {
+	errstack_push_generic_nonnull_ptr(errstack, errstack_free_client_hello, element);
+}

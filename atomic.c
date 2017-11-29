@@ -24,6 +24,7 @@
 #include <string.h>
 #include <pthread.h>
 #include "atomic.h"
+#include "errstack.h"
 
 void atomic_init(struct atomic_t *atomic) {
 	memset(atomic, 0, sizeof(*atomic));
@@ -59,4 +60,12 @@ void atomic_wait_until_value(struct atomic_t *atomic, int value) {
 		pthread_cond_wait(&atomic->cond, &atomic->mutex);
 	}
 	pthread_mutex_unlock(&atomic->mutex);
+}
+
+static void errstack_atomic_dec(struct errstack_element_t *element) {
+	atomic_dec((struct atomic_t*)element->ptrvalue);
+}
+
+void errstack_push_atomic_dec(struct errstack_t *errstack, struct atomic_t *element) {
+	errstack_push_generic_nonnull_ptr(errstack, errstack_atomic_dec, element);
 }

@@ -25,6 +25,7 @@
 #define __ATOMIC_H__
 
 #include <pthread.h>
+#include "errstack.h"
 
 struct atomic_t {
 	pthread_mutex_t mutex;
@@ -39,6 +40,7 @@ void atomic_set(struct atomic_t *atomic, int value);
 void atomic_inc(struct atomic_t *atomic);
 void atomic_dec(struct atomic_t *atomic);
 void atomic_wait_until_value(struct atomic_t *atomic, int value);
+void errstack_push_atomic_dec(struct errstack_t *errstack, struct atomic_t *element);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif

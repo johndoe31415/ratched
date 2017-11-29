@@ -49,6 +49,7 @@
 #include "tools.h"
 #include "interceptdb.h"
 #include "errstack.h"
+#include "openssl.h"
 
 static struct atomic_t active_client_connections;
 static bool quit;
@@ -91,7 +92,7 @@ static void retrieve_and_parse_preliminary_data(struct errstack_t *es, int read_
 	if (preliminary_data->data_length > 0) {
 		preliminary_data->seen_clienthello = parse_client_hello(&preliminary_data->parsed_data, preliminary_data->data, preliminary_data->data_length);
 		if (preliminary_data->seen_clienthello) {
-			errstack_add_clienthello(es, &preliminary_data->parsed_data);
+			errstack_push_client_hello(es, &preliminary_data->parsed_data);
 			logmsg(LLVL_DEBUG, "Successfully parsed ClientHello message from preliminary data. SNI %s", preliminary_data->parsed_data.server_name_indication ? preliminary_data->parsed_data.server_name_indication : "not present");
 		} else {
 			logmsg(LLVL_WARN, "The %zd initial bytes couldn't be parsed as a ClientHello.", preliminary_data->data_length);
@@ -120,12 +121,15 @@ static void log_tls_endpoint_config(enum loglvl_t loglvl, const char *descriptio
 }
 
 static void start_tls_forwarding(struct intercept_entry_t *decision, const struct client_thread_data_t *ctx, const struct preliminary_data_t *preliminary_data, int accepted_fd, int connected_fd) {
+	struct errstack_t es = ERRSTACK_INIT;
+
 	/* Now perform TLS handshake with the accepted peer first */
 	struct tls_endpoint_config_t server_config = decision->server_template;
 	log_tls_endpoint_config(LLVL_TRACE, "Server TLS endpoint configuration template", &server_config);
 
 	if (!server_config.key) {
 		logmsg(LLVL_ERROR, "TLS forwarding not possible, configuration is missing the server private key.");
+		errstack_pop_all(&es);
 		return;
 	}
 
@@ -134,10 +138,12 @@ static void start_tls_forwarding(struct intercept_entry_t *decision, const struc
 		 * server certificate */
 		if (!server_config.certificate_authority.cert) {
 			logmsg(LLVL_ERROR, "TLS forwarding not possible. Tried to generate server certificate, but CA certificate is missing.");
+			errstack_pop_all(&es);
 			return;
 		}
 		if (!server_config.certificate_authority.key) {
 			logmsg(LLVL_ERROR, "TLS forwarding not possible. Tried to generate server certificate, but CA private key is missing.");
+			errstack_pop_all(&es);
 			return;
 		}
 		server_config.cert = forge_certificate_for_server(preliminary_data->parsed_data.server_name_indication, ctx->destination_ip_nbo);
@@ -153,6 +159,7 @@ static void start_tls_forwarding(struct intercept_entry_t *decision, const struc
 		.initial_peer_data_length = preliminary_data->data_length,
 	};
 	struct tls_connection_t accepted_ssl = openssl_tls_connect(&server_request);
+	errstack_push_SSL(&es, accepted_ssl.ssl);
 
 	/* Did the accepted peer send a client certificate? */
 	struct tls_endpoint_config_t client_config = decision->client_template;
@@ -169,6 +176,7 @@ static void start_tls_forwarding(struct intercept_entry_t *decision, const struc
 		} else {
 			X509_up_ref(client_config.cert);
 		}
+		errstack_push_X509(&es, client_config.cert);
 	}
 	log_tls_endpoint_config(LLVL_TRACE, "Client TLS endpoint final configuration", &client_config);
 
@@ -180,6 +188,7 @@ static void start_tls_forwarding(struct intercept_entry_t *decision, const struc
 		.server_name_indication = preliminary_data->parsed_data.server_name_indication,
 	};
 	struct tls_connection_t connected_ssl = openssl_tls_connect(&client_request);
+	errstack_push_SSL(&es, connected_ssl.ssl);
 
 	/* Then forward the TLS channels */
 	if (connected_ssl.ssl && accepted_ssl.ssl) {
@@ -203,25 +212,22 @@ static void start_tls_forwarding(struct intercept_entry_t *decision, const struc
 	} else {
 		logmsg(LLVL_ERROR, "One TLS connection couldn't be established (connected %p, accepted %p). Cannot forward.", connected_ssl.ssl, accepted_ssl.ssl);
 	}
-
-	SSL_free(connected_ssl.ssl);
-	SSL_free(accepted_ssl.ssl);
-	X509_free(client_config.cert);
+	errstack_pop_all(&es);
 }
 
 static void client_thread_fnc(void *vctx) {
 	struct client_thread_data_t *ctx = (struct client_thread_data_t*)vctx;
-	struct errstack_t es = { 0 };
-	errstack_add_atomic_dec(&es, &active_client_connections);
-	errstack_add_malloc(&es, ctx);
-	errstack_add_fd(&es, ctx->accepted_sd);
+	struct errstack_t es = ERRSTACK_INIT;
+	errstack_push_atomic_dec(&es, &active_client_connections);
+	errstack_push_malloc(&es, ctx);
+	errstack_push_fd(&es, ctx->accepted_sd);
 
 	/* Create client connection first */
-	int connected_sd = errstack_add_fd(&es, tcp_connect(ctx->destination_ip_nbo, ctx->destination_port_nbo));
+	int connected_sd = errstack_push_fd(&es, tcp_connect(ctx->destination_ip_nbo, ctx->destination_port_nbo));
 	if (connected_sd == -1) {
 		/* Connection to client failed. */
 		logmsg(LLVL_ERROR, "Outgoing connection to " PRI_IPv4_PORT " failed, closing accepted connection: %s", FMT_IPv4_PORT_TUPLE(ctx->destination_ip_nbo, ctx->destination_port_nbo), strerror(errno));
-		errstack_free(&es);
+		errstack_pop_all(&es);
 		return;
 	}
 
@@ -247,7 +253,7 @@ static void client_thread_fnc(void *vctx) {
 	} else {
 		logmsg(LLVL_FATAL, "Programming error: got interception mode 0x%x", decision->interception_mode);
 	}
-	errstack_free(&es);
+	errstack_pop_all(&es);
 }
 
 static void start_client_thread(struct multithread_dumper_t *mtdump, int accepted_sd, const struct sockaddr_in *source, const struct sockaddr_in *destination) {

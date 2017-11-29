@@ -24,9 +24,25 @@
 #ifndef __OPENSSL_H__
 #define __OPENSSL_H__
 
+#include "errstack.h"
+#include <openssl/x509.h>
+#include <openssl/evp.h>
+#include <openssl/ocsp.h>
+#include <openssl/ssl.h>
+
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
 void openssl_init(void);
 void openssl_deinit(void);
+X509* errstack_push_X509(struct errstack_t *errstack, X509 *element);
+EVP_PKEY* errstack_push_EVP_PKEY(struct errstack_t *errstack, EVP_PKEY *element);
+STACK_OF(X509)* errstack_push_sk_X509(struct errstack_t *errstack, STACK_OF(X509) *element);
+OCSP_BASICRESP* errstack_push_OCSP_BASICRESP(struct errstack_t *errstack, OCSP_BASICRESP *element);
+OCSP_CERTID* errstack_push_OCSP_CERTID(struct errstack_t *errstack, OCSP_CERTID *element);
+ASN1_TIME* errstack_push_ASN1_TIME(struct errstack_t *errstack, ASN1_TIME *element);
+BIGNUM* errstack_push_BIGNUM(struct errstack_t *errstack, BIGNUM *element);
+RSA* errstack_push_RSA(struct errstack_t *errstack, RSA *element);
+EC_KEY* errstack_push_EC_KEY(struct errstack_t *errstack, EC_KEY *element);
+SSL* errstack_push_SSL(struct errstack_t *errstack, SSL *element);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif

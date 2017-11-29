@@ -26,6 +26,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "errstack.h"
 
 struct chello_t {
 	char *server_name_indication;
@@ -38,10 +39,9 @@ struct chello_t {
 };
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
-struct lookup_table_element_t;
-struct callback_ctx_t;
 bool parse_client_hello(struct chello_t *result, const uint8_t *data, int length);
 void free_client_hello(struct chello_t *chello);
+void errstack_push_client_hello(struct errstack_t *errstack, struct chello_t *element);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif
