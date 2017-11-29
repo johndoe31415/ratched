@@ -48,11 +48,6 @@ struct intercept_entry_t* interceptdb_find_entry(const char *hostname, uint32_t 
 
 static bool initialize_default_intercept_entry(struct intercept_entry_t *new_entry) {
 	new_entry->interception_mode = OPPORTUNISTIC_TLS_INTERCEPTION;
-	new_entry->server_template.certificate_authority.cert = get_forged_root_certificate();
-	new_entry->server_template.certificate_authority.key = get_forged_root_key();
-	new_entry->server_template.key = get_tls_server_key();
-	new_entry->server_template.ocsp_responder.cert = get_forged_root_certificate();
-	new_entry->server_template.ocsp_responder.key = get_forged_root_key();
 	return true;
 }
 
@@ -85,23 +80,37 @@ static bool init_tls_intercept_entry(struct tls_endpoint_config_t *config, const
 static bool initialize_intercept_entry_from_pgm_config(struct intercept_entry_t *new_entry, const struct intercept_config_t *pgm_config) {
 	memset(new_entry, 0, sizeof(struct intercept_entry_t));
 	if (!pgm_config) {
-		return initialize_default_intercept_entry(new_entry);
+		initialize_default_intercept_entry(new_entry);
+	} else {
+		new_entry->interception_mode = pgm_config->interception_mode;
+		new_entry->hostname = pgm_config->hostname;
+		new_entry->ipv4_nbo = pgm_config->ipv4_nbo;
+
+		char text[128];
+		snprintf(text, sizeof(text), "%s client", pgm_config->hostname);
+		if (!init_tls_intercept_entry(&new_entry->client_template, &pgm_config->client, text)) {
+			return false;
+		}
+		snprintf(text, sizeof(text), "%s server", pgm_config->hostname);
+		if (!init_tls_intercept_entry(&new_entry->server_template, &pgm_config->server, text)) {
+			return false;
+		}
 	}
 
-	new_entry->interception_mode = pgm_config->interception_mode;
-	new_entry->hostname = pgm_config->hostname;
-	new_entry->ipv4_nbo = pgm_config->ipv4_nbo;
-
-	char text[128];
-	snprintf(text, sizeof(text), "%s client", pgm_config->hostname);
-	if (!init_tls_intercept_entry(&new_entry->client_template, &pgm_config->client, text)) {
-		return false;
+	/* Defaults that apply even when options are specified -- for example, if
+	 * only client cert is specified, the internal server cert should still be
+	 * used instead of throwing an error that it hasn't been specified. */
+	if (!new_entry->server_template.key) {
+		new_entry->server_template.key = get_tls_server_key();
 	}
-	snprintf(text, sizeof(text), "%s server", pgm_config->hostname);
-	if (!init_tls_intercept_entry(&new_entry->server_template, &pgm_config->server, text)) {
-		return false;
+	if (!new_entry->server_template.certificate_authority.key && !new_entry->server_template.certificate_authority.cert) {
+		new_entry->server_template.certificate_authority.cert = get_forged_root_certificate();
+		new_entry->server_template.certificate_authority.key = get_forged_root_key();
 	}
-
+	if (!new_entry->server_template.ocsp_responder.key && !new_entry->server_template.ocsp_responder.cert) {
+		new_entry->server_template.ocsp_responder.cert = get_forged_root_certificate();
+		new_entry->server_template.ocsp_responder.key = get_forged_root_key();
+	}
 	return true;
 }
 
@@ -114,13 +123,13 @@ static bool append_intercept_entry_from_pgm_config(const struct intercept_config
 	entries = new_entries;
 
 	struct intercept_entry_t *new_entry = &entries[entry_count++];
-	initialize_intercept_entry_from_pgm_config(new_entry, pgm_config);
-
-	return true;
+	return initialize_intercept_entry_from_pgm_config(new_entry, pgm_config);
 }
 
 bool init_interceptdb(void) {
-	initialize_intercept_entry_from_pgm_config(&default_entry, pgm_options->default_config);
+	if (!initialize_intercept_entry_from_pgm_config(&default_entry, pgm_options->default_config)) {
+		return false;
+	}
 
 	for (int i = 0; i < pgm_options->intercept.count; i++) {
 		struct intercept_config_t *pgm_config = pgm_options->intercept.config[i];

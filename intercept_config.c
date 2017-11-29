@@ -111,7 +111,6 @@ struct intercept_config_t* parse_intercept_config(const char *connection_params,
 		free_intercept_config(&config);
 		return NULL;
 	}
-
 	if (config->client.cert_filename) {
 		/* Having a CertificateRequest is implied when using a client
 		 * certificate */
