@@ -207,7 +207,7 @@ examples:
       unmodified) except for connections with Server Name Indication
       www.johannes-bauer.com, on which interception is performed.
 
-    $ ratched --intercept www.johannes-bauer.com,clientcert=true -o output.pcapng
+    $ ratched --intercept www.johannes-bauer.com,s_reqclientcert=true -o output.pcapng
       Generally do not request client certificates from connecting peers
       except for connections with Server Name Indication www.johannes-
       bauer.com, where clients are sent a CertificateRequest TLS message. If
@@ -216,7 +216,7 @@ examples:
       certificate metadata and use the forged client certificate in the
       connection against the real server.
 
-    $ ratched --intercept www.johannes-bauer.com,c_cerfile=joe.crt,c_keyfile=joe.key -o output.pcapng
+    $ ratched --intercept www.johannes-bauer.com,c_certfile=joe.crt,c_keyfile=joe.key -o output.pcapng
       Same as before, but for connections to johannes-bauer.com, do not forge
       client certificates, but always use the given client certificate and key
       (joe.crt / joe.key) for authentication against the server.

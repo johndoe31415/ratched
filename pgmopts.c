@@ -223,7 +223,7 @@ void show_syntax(const char *pgmbinary) {
 	fprintf(stderr, "      unmodified) except for connections with Server Name Indication\n");
 	fprintf(stderr, "      www.johannes-bauer.com, on which interception is performed.\n");
 	fprintf(stderr, "\n");
-	fprintf(stderr, "    $ ratched --intercept www.johannes-bauer.com,clientcert=true -o output.pcapng\n");
+	fprintf(stderr, "    $ ratched --intercept www.johannes-bauer.com,s_reqclientcert=true -o output.pcapng\n");
 	fprintf(stderr, "      Generally do not request client certificates from connecting peers\n");
 	fprintf(stderr, "      except for connections with Server Name Indication www.johannes-\n");
 	fprintf(stderr, "      bauer.com, where clients are sent a CertificateRequest TLS message. If\n");
@@ -232,7 +232,7 @@ void show_syntax(const char *pgmbinary) {
 	fprintf(stderr, "      certificate metadata and use the forged client certificate in the\n");
 	fprintf(stderr, "      connection against the real server.\n");
 	fprintf(stderr, "\n");
-	fprintf(stderr, "    $ ratched --intercept www.johannes-bauer.com,c_cerfile=joe.crt,c_keyfile=joe.key -o output.pcapng\n");
+	fprintf(stderr, "    $ ratched --intercept www.johannes-bauer.com,c_certfile=joe.crt,c_keyfile=joe.key -o output.pcapng\n");
 	fprintf(stderr, "      Same as before, but for connections to johannes-bauer.com, do not forge\n");
 	fprintf(stderr, "      client certificates, but always use the given client certificate and key\n");
 	fprintf(stderr, "      (joe.crt / joe.key) for authentication against the server.\n");
