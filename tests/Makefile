@@ -22,6 +22,7 @@ TEST_COMMON_OBJS := testbed.o
 TEST_OBJS := \
 	test_hostname_ids \
 	test_keyvaluelist \
+	test_map \
 	test_ocsp \
 	test_openssl_certs \
 	test_openssl_clienthello \
@@ -38,8 +39,9 @@ TEST_MANUAL_OBJS := \
 
 all: $(TEST_COMMON_OBJS) $(TEST_OBJS) $(TEST_MANUAL_OBJS)
 
-test_hostname_ids: $(TEST_COMMON_OBJS) hostname_ids.o helper_logging.o
+test_hostname_ids: $(TEST_COMMON_OBJS) hostname_ids.o tools.o helper_logging.o
 test_keyvaluelist: $(TEST_COMMON_OBJS) keyvaluelist.o stringlist.o parse.o helper_logging.o
+test_map: $(TEST_COMMON_OBJS) map.o helper_logging.o
 test_ocsp: $(TEST_COMMON_OBJS) helper_logging.o openssl.o ocsp_response.o openssl_certs.o tools.o errstack.o
 test_openssl_certs: $(TEST_COMMON_OBJS) openssl_certs.o openssl.o helper_logging.o errstack.o tools.o
 test_openssl_clienthello: $(TEST_COMMON_OBJS) openssl_clienthello.o openssl.o helper_logging.o errstack.o

@@ -30,11 +30,11 @@
 #include "logging.h"
 
 static void errstack_post_push(const struct errstack_t *errstack) {
-	fprintf(stderr, "-> %p %d\n", errstack, errstack->count);
+	//fprintf(stderr, "-> %p %d\n", errstack, errstack->count);
 }
 
 static void errstack_post_pop(const struct errstack_t *errstack) {
-	fprintf(stderr, "<- %p %d\n", errstack, errstack->count);
+	//fprintf(stderr, "<- %p %d\n", errstack, errstack->count);
 }
 
 void* errstack_push_generic_ptr(struct errstack_t *errstack, errstack_free_callback_t free_callback, void *element) {

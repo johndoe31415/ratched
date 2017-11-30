@@ -26,6 +26,7 @@ OBJS := \
 	shutdown.o \
 	stringlist.o \
 	tcpip.o \
+	map.o \
 	thread.o \
 	tools.o
 
