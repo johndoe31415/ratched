@@ -60,7 +60,7 @@ int main(int argc, char **argv) {
 		exit(EXIT_FAILURE);
 	}
 
-	if (pgm_options->daemonize && !daemonize()) {
+	if (pgm_options->operation.daemonize && !daemonize()) {
 		logmsg(LLVL_FATAL, "Requested daemonization failed.");
 		exit(EXIT_FAILURE);
 	}

@@ -178,7 +178,7 @@ bool certforgery_init(void) {
 			.subject_pubkey = root_ca_key,
 			.issuer_privkey = root_ca_key,
 			.common_name = "Evil root certificate",
-			.mark_certificate = pgm_options->mark_forged_certificates,
+			.mark_certificate = pgm_options->forged_certs.mark_forged_certificates,
 			.is_ca_certificate = true,
 			.validity_predate_seconds = 86400,
 			.validity_seconds = 86400 * 365 * 5,
@@ -229,13 +229,13 @@ X509 *forge_certificate_for_server(const char *hostname, uint32_t ipv4_nbo) {
 			.subject_pubkey = server_key,
 			.issuer_privkey = root_ca_key,
 			.issuer_certificate = root_ca,
-			.mark_certificate = pgm_options->mark_forged_certificates,
+			.mark_certificate = pgm_options->forged_certs.mark_forged_certificates,
 			.subject_alternative_ipv4_address = ipv4_nbo,
 			.is_ca_certificate = false,
 			.validity_predate_seconds = 86400,
 			.validity_seconds = 86400 * 365 * 1,
-			.crl_uri = pgm_options->crl_uri,
-			.ocsp_responder_uri = pgm_options->ocsp_responder_uri,
+			.crl_uri = pgm_options->forged_certs.crl_uri,
+			.ocsp_responder_uri = pgm_options->forged_certs.ocsp_responder_uri,
 		};
 		if (hostname) {
 			certspec.subject_alternative_dns_hostname = hostname;
@@ -250,7 +250,7 @@ X509 *forge_certificate_for_server(const char *hostname, uint32_t ipv4_nbo) {
 			if (!entry) {
 				logmsg(LLVL_ERROR, "Failed to add server certificate for %s to database.", hostname);
 				X509_free(cert);
-			} else if (pgm_options->dump_certificates) {
+			} else if (pgm_options->log.dump_certificates) {
 				log_cert(LLVL_DEBUG, entry->certificate, "Created forged server certificate");
 			}
 		}

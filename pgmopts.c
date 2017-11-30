@@ -40,11 +40,15 @@ static struct pgmopts_t pgm_options_rw = {
 	.log = {
 		.level = LLVL_INFO,
 	},
-	.server_socket = {
-		.listen = 10,
+	.network = {
+		.initial_read_timeout = 1.0,
+		.server_socket = {
+			.listen = 10,
+		},
 	},
-	.initial_read_timeout = 1.0,
-	.default_recalculate_key_identifiers = true,
+	.forged_certs = {
+		.recalculate_key_identifiers = true,
+	},
 	.keyspec = {
 		.keytype = KEYTYPE_RSA,
 		.rsa = {
@@ -375,8 +379,8 @@ static bool append_custom_intercept_config(const char *connection_params) {
 }
 
 bool parse_options(int argc, char **argv) {
-	pgm_options_rw.server_socket.ipv4_nbo = htonl(IPv4ADDR(127, 0, 0, 1));
-	pgm_options_rw.server_socket.port_nbo = htons(9999);
+	pgm_options_rw.network.server_socket.ipv4_nbo = htonl(IPv4ADDR(127, 0, 0, 1));
+	pgm_options_rw.network.server_socket.port_nbo = htons(9999);
 
 	/* Begin of command definition -- auto-generated, do not edit! */
 	const char *short_options = "c:f:l:d:i:o:v";
@@ -423,18 +427,18 @@ bool parse_options(int argc, char **argv) {
 
 			case ARG_LOCAL_FWD_SHORT:
 			case ARG_LOCAL_FWD:
-				if (!parse_hostname_port(optarg, &pgm_options_rw.local_forwarding.ipv4_nbo, &pgm_options_rw.local_forwarding.port_nbo)) {
+				if (!parse_hostname_port(optarg, &pgm_options_rw.network.local_forwarding.ipv4_nbo, &pgm_options_rw.network.local_forwarding.port_nbo)) {
 					snprintf(parsing_error, sizeof(parsing_error), "not a valid hostname:port combination: %s", optarg);
 					return false;
 				}
 				break;
 
 			case ARG_SINGLE_SHOT:
-				pgm_options_rw.singleshot = true;
+				pgm_options_rw.operation.singleshot = true;
 				break;
 
 			case ARG_DUMP_CERTS:
-				pgm_options_rw.dump_certificates = true;
+				pgm_options_rw.log.dump_certificates = true;
 				break;
 
 			case ARG_KEYSPEC:
@@ -444,23 +448,23 @@ bool parse_options(int argc, char **argv) {
 				break;
 
 			case ARG_INITIAL_READ_TIMEOUT:
-				pgm_options_rw.initial_read_timeout = atof(optarg);
-				if (pgm_options_rw.initial_read_timeout <= 0) {
+				pgm_options_rw.network.initial_read_timeout = atof(optarg);
+				if (pgm_options_rw.network.initial_read_timeout <= 0) {
 					snprintf(parsing_error, sizeof(parsing_error), "read timeout must be a positive value");
 					return false;
 				}
 				break;
 
 			case ARG_MARK_FORGED_CERTIFICATES:
-				pgm_options_rw.mark_forged_certificates = true;
+				pgm_options_rw.forged_certs.mark_forged_certificates = true;
 				break;
 
 			case ARG_NO_RECALCULATE_KEYIDS:
-				pgm_options_rw.default_recalculate_key_identifiers = false;
+				pgm_options_rw.forged_certs.recalculate_key_identifiers = false;
 				break;
 
 			case ARG_DAEMONIZE:
-				pgm_options_rw.daemonize = true;
+				pgm_options_rw.operation.daemonize = true;
 				break;
 
 			case ARG_LOGFILE:
@@ -472,15 +476,15 @@ bool parse_options(int argc, char **argv) {
 				break;
 
 			case ARG_CRL_URI:
-				pgm_options_rw.crl_uri = optarg;
+				pgm_options_rw.forged_certs.crl_uri = optarg;
 				break;
 
 			case ARG_OCSP_URI:
-				pgm_options_rw.ocsp_responder_uri = optarg;
+				pgm_options_rw.forged_certs.ocsp_responder_uri = optarg;
 				break;
 
 			case ARG_WRITE_MEMDUMPS_INTO_FILES:
-				pgm_options_rw.write_memdumps_into_files = true;
+				pgm_options_rw.log.write_memdumps_into_files = true;
 				break;
 
 			case ARG_USE_IPV6_ENCAPSULATION:
@@ -489,7 +493,7 @@ bool parse_options(int argc, char **argv) {
 
 			case ARG_LISTEN_SHORT:
 			case ARG_LISTEN:
-				if (!parse_hostname_port(optarg, &pgm_options_rw.server_socket.ipv4_nbo, &pgm_options_rw.server_socket.port_nbo)) {
+				if (!parse_hostname_port(optarg, &pgm_options_rw.network.server_socket.ipv4_nbo, &pgm_options_rw.network.server_socket.port_nbo)) {
 					snprintf(parsing_error, sizeof(parsing_error), "not a valid hostname:port combination: %s", optarg);
 					return false;
 				}

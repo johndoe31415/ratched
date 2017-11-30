@@ -35,38 +35,51 @@ enum keytype_t {
 
 struct pgmopts_t {
 	char *config_dir;
+
 	struct {
 		const char *filename;
 		const char *comment;
 		bool use_ipv6_encapsulation;
 	} pcapng;
+
 	struct {
 		enum loglvl_t level;
 		const char *logfilename;
 		bool flush;
+		bool dump_certificates;
+		bool write_memdumps_into_files;
 	} log;
-	bool daemonize;
-	bool dump_certificates;
-	bool singleshot;
-	double initial_read_timeout;
-	bool mark_forged_certificates;
-	bool write_memdumps_into_files;
-	const char *crl_uri, *ocsp_responder_uri;
-	bool default_recalculate_key_identifiers;
+
 	struct {
-		uint32_t ipv4_nbo;
-		uint16_t port_nbo;
-		unsigned int listen;
-	} server_socket;
+		bool daemonize;
+		bool singleshot;
+	} operation;
+
+	struct {
+		struct {
+			uint32_t ipv4_nbo;
+			uint16_t port_nbo;
+			unsigned int listen;
+		} server_socket;
+		struct {
+			uint32_t ipv4_nbo;
+			uint16_t port_nbo;
+		} local_forwarding;
+		double initial_read_timeout;
+	} network;
+
+	struct {
+		const char *crl_uri, *ocsp_responder_uri;
+		bool mark_forged_certificates;
+		bool recalculate_key_identifiers;
+	} forged_certs;
+
 	struct intercept_config_t *default_config;
 	struct {
 		struct intercept_config_t **config;
 		unsigned int count;
 	} intercept;
-	struct {
-		uint32_t ipv4_nbo;
-		uint16_t port_nbo;
-	} local_forwarding;
+
 	struct {
 		enum keytype_t keytype;
 		union {

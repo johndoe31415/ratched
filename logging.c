@@ -131,7 +131,7 @@ static void hexdump_callback(unsigned int flags, void *arg) {
 	static unsigned int hexdump_no = 0;
 	struct memdump_data_t *mem = (struct memdump_data_t*)arg;
 	if (flags & FLAG_LOG_SAMELINE) {
-		if (pgm_options->write_memdumps_into_files) {
+		if (pgm_options->log.write_memdumps_into_files) {
 			hexdump_no++;
 			char filename[64];
 			snprintf(filename, sizeof(filename), "hexdump_%04d.bin", hexdump_no);

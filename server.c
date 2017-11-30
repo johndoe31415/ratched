@@ -81,12 +81,12 @@ static void retrieve_and_parse_preliminary_data(struct errstack_t *es, int read_
 
 	/* Connection to target suceeded. First read some bytes that the client
 	 * (presumably) has sent so far. */
-	bool data_available = select_read(read_sd, pgm_options->initial_read_timeout);
+	bool data_available = select_read(read_sd, pgm_options->network.initial_read_timeout);
 	if (data_available) {
 		preliminary_data->data_length = read(read_sd, preliminary_data->data, MAX_PRELIMINARY_DATA_LEN);
 		logmsg(LLVL_DEBUG, "Initial client connection returned %zd bytes.", preliminary_data->data_length);
 	} else {
-		logmsg(LLVL_DEBUG, "Initial client connection timed out after %.1f sec.", pgm_options->initial_read_timeout);
+		logmsg(LLVL_DEBUG, "Initial client connection timed out after %.1f sec.", pgm_options->network.initial_read_timeout);
 	}
 
 	/* Now try to parse these bytes as a ClientHello message, if possible */
@@ -172,7 +172,7 @@ static void start_tls_forwarding(struct intercept_entry_t *decision, const struc
 			 * certificate configuration found. Dynamically generate
 			 * client certificate. */
 			client_config.key = get_tls_client_key();
-			client_config.cert = forge_client_certificate(accepted_ssl.peer_certificate, client_config.key, NULL, client_config.key, pgm_options->default_recalculate_key_identifiers, pgm_options->mark_forged_certificates);
+			client_config.cert = forge_client_certificate(accepted_ssl.peer_certificate, client_config.key, NULL, client_config.key, pgm_options->forged_certs.recalculate_key_identifiers, pgm_options->forged_certs.mark_forged_certificates);
 			log_cert(LLVL_DEBUG, client_config.cert, "Dynamically created client certificate");
 		} else {
 			X509_up_ref(client_config.cert);
@@ -304,8 +304,8 @@ bool start_forwarding(struct multithread_dumper_t *mtdump) {
 	struct sockaddr_in serv_addr;
     memset(&serv_addr, 0, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = pgm_options->server_socket.ipv4_nbo;
-    serv_addr.sin_port = pgm_options->server_socket.port_nbo;
+    serv_addr.sin_addr.s_addr = pgm_options->network.server_socket.ipv4_nbo;
+    serv_addr.sin_port = pgm_options->network.server_socket.port_nbo;
 
 	if (bind(listening_sd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) == -1) {
 		logmsg(LLVL_ERROR, "Binding socket on " PRI_IPv4_PORT " failed: %s", FMT_IPv4_PORT(serv_addr), strerror(errno));
@@ -313,8 +313,8 @@ bool start_forwarding(struct multithread_dumper_t *mtdump) {
 		return false;
 	}
 
-    if (listen(listening_sd, pgm_options->server_socket.listen) == -1) {
-		logmsg(LLVL_ERROR, "Listening to %d concurrent requests on bound socket failed: %s", pgm_options->server_socket.listen, strerror(errno));
+    if (listen(listening_sd, pgm_options->network.server_socket.listen) == -1) {
+		logmsg(LLVL_ERROR, "Listening to %d concurrent requests on bound socket failed: %s", pgm_options->network.server_socket.listen, strerror(errno));
 		close(listening_sd);
 		return false;
 	}
@@ -344,9 +344,9 @@ bool start_forwarding(struct multithread_dumper_t *mtdump) {
 			bool start_client = true;
 			logmsg(LLVL_DEBUG, "Original connection with FD %d from " PRI_IPv4_PORT " tried to reach " PRI_IPv4_PORT ".", connsd, FMT_IPv4_PORT(client_addr), FMT_IPv4_PORT(original_addr));
 			if (ntohl(original_addr.sin_addr.s_addr) == IPv4ADDR(127, 0, 0, 1)) {
-				if (pgm_options->local_forwarding.ipv4_nbo != 0) {
-					original_addr.sin_addr.s_addr = pgm_options->local_forwarding.ipv4_nbo;
-					original_addr.sin_port = pgm_options->local_forwarding.port_nbo;
+				if (pgm_options->network.local_forwarding.ipv4_nbo != 0) {
+					original_addr.sin_addr.s_addr = pgm_options->network.local_forwarding.ipv4_nbo;
+					original_addr.sin_port = pgm_options->network.local_forwarding.port_nbo;
 					logmsg(LLVL_DEBUG, "Local connection detected, rerouting destination to " PRI_IPv4_PORT, FMT_IPv4_PORT(original_addr));
 				} else {
 					logmsg(LLVL_WARN, "Local connection detected, but no forwarding requested. Dropping connection.");
@@ -359,7 +359,7 @@ bool start_forwarding(struct multithread_dumper_t *mtdump) {
 			}
 		}
 
-		if (pgm_options->singleshot) {
+		if (pgm_options->operation.singleshot) {
 			logmsg(LLVL_INFO, "Shutting down (single shot requested).");
 			break;
 		}
