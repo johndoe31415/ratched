@@ -34,6 +34,8 @@ static void test_hostname_ids(void) {
 	test_assert_int_eq(resolve_hostname_id(0x11223344, "foobar"), 1);
 	test_assert_int_eq(resolve_hostname_id(0x11223344, "barfoo"), 2);
 	test_assert_int_eq(resolve_hostname_id(0x11223344, "foobar"), 1);
+	test_assert_int_eq(resolve_hostname_id(0x22334455, "moo.com"), 1);
+	test_assert_int_eq(resolve_hostname_id(0x22334455, "foo.bar"), 2);
 	deinit_hostname_ids();
 	subtest_finished();
 }

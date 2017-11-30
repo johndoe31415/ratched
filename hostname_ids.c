@@ -26,99 +26,60 @@
 #include <errno.h>
 #include "logging.h"
 #include "hostname_ids.h"
+#include "map.h"
 
-struct hostname_id_entry_t {
-	uint32_t ipv4_nbo;
-	unsigned int hostname_count;
-	char **hostnames;
-};
-
-static unsigned int hostname_entry_count;
-static struct hostname_id_entry_t *hostname_entries;
-
-static struct hostname_id_entry_t* add_entry_for_ip(uint32_t ipv4_nbo) {
-	struct hostname_id_entry_t *new_hostname_entries = realloc(hostname_entries, sizeof(struct hostname_id_entry_t) * (hostname_entry_count + 1));
-	if (!new_hostname_entries) {
-		logmsg(LLVL_FATAL, "Failed to realloc(3) hostname_entries: %s", strerror(errno));
-		return NULL;
-	}
-	hostname_entries = new_hostname_entries;
-	struct hostname_id_entry_t *result = &hostname_entries[hostname_entry_count];
-	memset(result, 0, sizeof(struct hostname_id_entry_t));
-	result->ipv4_nbo = ipv4_nbo;
-	hostname_entry_count++;
-	return result;
-}
-
-static struct hostname_id_entry_t* find_entry_for_ip(uint32_t ipv4_nbo) {
-	for (int i = 0; i < hostname_entry_count; i++) {
-		if (hostname_entries[i].ipv4_nbo == ipv4_nbo) {
-			return &hostname_entries[i];
-		}
-	}
-	return add_entry_for_ip(ipv4_nbo);
-}
-
-static unsigned int find_hostname_index(const struct hostname_id_entry_t *entry, const char *hostname) {
-	for (unsigned int i = 0; i < entry->hostname_count; i++) {
-		if (!strcmp(hostname, entry->hostnames[i])) {
-			return i + 1;
-		}
-	}
-	return 0;
-}
-
-static unsigned int add_hostname_to_entry(struct hostname_id_entry_t *entry, const char *hostname) {
-	char *dup_hostname = strdup(hostname);
-	if (!dup_hostname) {
-		logmsg(LLVL_FATAL, "Failed to strdup(3) hostname: %s", strerror(errno));
-		return 0;
-	}
-
-	char **new_hostnames = realloc(entry->hostnames, sizeof(char*) * (entry->hostname_count + 1));
-	if (!new_hostnames) {
-		logmsg(LLVL_FATAL, "Failed to realloc(3) hostnames: %s", strerror(errno));
-		return 0;
-	}
-	entry->hostnames = new_hostnames;
-
-	entry->hostnames[entry->hostname_count] = dup_hostname;
-	entry->hostname_count++;
-	return entry->hostname_count;
-}
+static struct map_t *ip_to_hostnames;
+/* ip_to_hostnames = {
+ * 		0x11223344: {
+ * 			"foobar":	1,
+ * 			"barfoo":	2,
+ * 			"mookoo":	3,
+ * 		},
+ * 		0x22334455: {
+ * 			"moo.com":	1,
+ * 			"bar.de":	2,
+ * 		},
+ * }
+ */
 
 unsigned int resolve_hostname_id(uint32_t ipv4_nbo, const char *hostname) {
 	if (!hostname) {
 		return 0;
 	}
-	struct hostname_id_entry_t *entry = find_entry_for_ip(ipv4_nbo);
-	if (!entry) {
-		logmsg(LLVL_FATAL, "Unable to retrieve hostname entry for \"%s\", returning 0.", hostname);
-		return 0;
+
+	struct map_t *map = map_get(ip_to_hostnames, &ipv4_nbo, sizeof(uint32_t));
+	if (!map) {
+		/* No entry for that IP address so far */
+		map = map_init();
+		if (!map) {
+			logmsg(LLVL_FATAL, "Unable to create inner map for hostname entry for \"%s\", returning 0.", hostname);
+			return 0;
+		}
+		if (!map_set(ip_to_hostnames, &ipv4_nbo, sizeof(uint32_t), map, 0)) {
+			logmsg(LLVL_FATAL, "Unable to register inner map for hostname entry for \"%s\", returning 0.", hostname);
+			map_free(map);
+			return 0;
+		}
 	}
 
-	unsigned int hostname_index = find_hostname_index(entry, hostname);
-	if (hostname_index > 0) {
-		return hostname_index;
+	int hostname_id = map_get_str_int(map, hostname);
+	if (hostname_id == -1) {
+		hostname_id = map->element_count + 1;
+		map_set_str_int(map, hostname, hostname_id);
 	}
 
-	/* Not present in entry, add. */
-	hostname_index = add_hostname_to_entry(entry, hostname);
-	if (!hostname_index) {
-		logmsg(LLVL_FATAL, "Failed to add hostname entry \"%s\" to entry %p, returning 0.", hostname, entry);
-	}
-	return hostname_index;
+	return hostname_id;
 }
 
 void init_hostname_ids(void) {
+	ip_to_hostnames = map_init();
+}
+
+static void free_inner_map(void *inner_map) {
+	map_free((struct map_t*)inner_map);
 }
 
 void deinit_hostname_ids(void) {
-	for (int i = 0; i < hostname_entry_count; i++) {
-		for (int j = 0; j < hostname_entries[i].hostname_count; j++) {
-			free(hostname_entries[i].hostnames[j]);
-		}
-		free(hostname_entries[i].hostnames);
-	}
-	free(hostname_entries);
+	map_foreach_ptrvalue(ip_to_hostnames, free_inner_map);
+	map_free(ip_to_hostnames);
 }
