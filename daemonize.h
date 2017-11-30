@@ -24,6 +24,8 @@
 #ifndef __DAEMONIZE_H__
 #define __DAEMONIZE_H__
 
+#include <stdbool.h>
+
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
 bool daemonize(void);
 /***************  AUTO GENERATED SECTION ENDS   ***************/

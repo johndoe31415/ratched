@@ -57,6 +57,7 @@ mantest_openssl_sserver: $(TEST_COMMON_OBJS) openssl_tls.o ocsp_response.o errst
 
 test: all
 	rm -f tests.log
+	./test_header_inclusion
 	for testname in $(TEST_OBJS); do ./$$testname; done
 	@./$(firstword $(TEST_OBJS)) --summary
 
@@ -64,6 +65,7 @@ clean:
 	rm -f $(TEST_COMMON_OBJS) $(TEST_OBJS) $(TEST_MANUAL_OBJS) ../*.o *.o
 	rm -f tests.log
 	rm -f test.pcapng tcpip.pcapng
+	rm -f test_header_inclusion.c test_header_inclusion.o
 
 .c:
 	$(CC) $(CFLAGS) -o $@ $+ $(LDFLAGS)

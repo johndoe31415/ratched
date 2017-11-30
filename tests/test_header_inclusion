@@ -1,0 +1,8 @@
+#!/bin/bash -e
+#
+
+for HDRFILE in ../*.h; do
+	echo "#include \"${HDRFILE}\"" >test_header_inclusion.c
+	echo "Including $HDRFILE"
+	gcc -Wall -O3 -c -o test_header_inclusion.o test_header_inclusion.c
+done

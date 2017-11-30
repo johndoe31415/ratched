@@ -33,6 +33,8 @@
 #define FMT_IPv4_PORT_TUPLE(ip, port)	FMT_IPv4(ip), ntohs(port)
 #define FMT_IPv4_PORT(saddr_in)			FMT_IPv4_PORT_TUPLE((saddr_in).sin_addr.s_addr, (saddr_in).sin_port)
 
+#include <stdint.h>
+
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
 int tcp_accept(uint16_t port_nbo);
 int tcp_connect(uint32_t ip_nbo, uint16_t port_nbo);
