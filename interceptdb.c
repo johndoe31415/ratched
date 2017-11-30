@@ -29,21 +29,18 @@
 #include "pgmopts.h"
 #include "intercept_config.h"
 #include "certforgery.h"
+#include "map.h"
 
 static struct intercept_entry_t default_entry;
-static struct intercept_entry_t *entries;
-static unsigned int entry_count;
+static struct map_t *intercept_entry_by_hostname;
 
 struct intercept_entry_t* interceptdb_find_entry(const char *hostname, uint32_t ipv4_nbo) {
-	if (!hostname) {
+	struct intercept_entry_t *entry = (struct intercept_entry_t*)map_get_str(intercept_entry_by_hostname, hostname);
+	if (!entry) {
 		return &default_entry;
+	} else {
+		return entry;
 	}
-	for (int i = 0; i < entry_count; i++) {
-		if (!strcasecmp(hostname, entries[i].hostname)) {
-			return &entries[i];
-		}
-	}
-	return &default_entry;
 }
 
 static bool initialize_default_intercept_entry(struct intercept_entry_t *new_entry) {
@@ -114,42 +111,33 @@ static bool initialize_intercept_entry_from_pgm_config(struct intercept_entry_t 
 	return true;
 }
 
-static bool append_intercept_entry_from_pgm_config(const struct intercept_config_t *pgm_config) {
-	struct intercept_entry_t *new_entries = realloc(entries, sizeof(struct intercept_entry_t) * (entry_count + 1));
-	if (!new_entries) {
-		logmsg(LLVL_FATAL, "Failed to realloc(3) entries: %s", strerror(errno));
-		return false;
-	}
-	entries = new_entries;
-
-	struct intercept_entry_t *new_entry = &entries[entry_count++];
-	return initialize_intercept_entry_from_pgm_config(new_entry, pgm_config);
-}
-
 bool init_interceptdb(void) {
 	if (!initialize_intercept_entry_from_pgm_config(&default_entry, pgm_options->default_config)) {
 		return false;
 	}
 
+	intercept_entry_by_hostname = map_init();
 	for (int i = 0; i < pgm_options->intercept.count; i++) {
 		struct intercept_config_t *pgm_config = pgm_options->intercept.config[i];
-		if (!append_intercept_entry_from_pgm_config(pgm_config)) {
+		struct map_element_t *new_map_entry = map_set_str(intercept_entry_by_hostname, pgm_config->hostname, NULL, sizeof(struct intercept_entry_t));
+		if (!new_map_entry) {
 			return false;
 		}
+		struct intercept_entry_t *new_entry = (struct intercept_entry_t*)new_map_entry->ptrvalue;
+		initialize_intercept_entry_from_pgm_config(new_entry, pgm_config);
 	}
 	return true;
 }
 
-static void free_entry(struct intercept_entry_t *entry) {
-	free_tls_endpoint_config(&entry->client_template);
-	free_tls_endpoint_config(&entry->server_template);
+static void free_entry(void *vintercept_entry) {
+	struct intercept_entry_t *intercept_entry = (struct intercept_entry_t*)vintercept_entry;
+	free_tls_endpoint_config(&intercept_entry->client_template);
+	free_tls_endpoint_config(&intercept_entry->server_template);
 }
 
 void deinit_interceptdb(void) {
 	free_entry(&default_entry);
-	for (int i = 0; i < entry_count; i++) {
-		free_entry(&entries[i]);
-	}
-	free(entries);
+	map_foreach_ptrvalue(intercept_entry_by_hostname, free_entry);
+	map_free(intercept_entry_by_hostname);
 }
 
