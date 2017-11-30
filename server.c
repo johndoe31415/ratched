@@ -148,6 +148,7 @@ static void start_tls_forwarding(struct intercept_entry_t *decision, const struc
 			return;
 		}
 		server_config.cert = forge_certificate_for_server(preliminary_data->parsed_data.server_name_indication, ctx->destination_ip_nbo);
+		errstack_push_X509(&es, server_config.cert);
 	}
 
 	log_tls_endpoint_config(LLVL_TRACE, "Server TLS endpoint final configuration", &server_config);

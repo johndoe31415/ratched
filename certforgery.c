@@ -35,6 +35,7 @@
 #include "openssl_certs.h"
 #include "ipfwd.h"
 #include "tools.h"
+#include "map.h"
 
 #define MAX_PATH_LEN		1024
 
@@ -48,44 +49,7 @@ static X509 *root_ca;
 static EVP_PKEY *root_ca_key;
 static EVP_PKEY *server_key;
 static EVP_PKEY *client_key;
-static unsigned int server_certificate_cnt;
-static struct server_certificate_t *server_certificates;
-
-static struct server_certificate_t* get_server_certificate(const char *hostname, uint32_t ipv4_nbo) {
-	if (!hostname) {
-		/* IP only search */
-		for (int i = 0; i < server_certificate_cnt; i++) {
-			if ((!server_certificates[i].hostname) && (ipv4_nbo == server_certificates[i].ipv4_nbo)) {
-				return &server_certificates[i];
-			}
-		}
-	} else {
-		/* Hostname + IP search */
-		for (int i = 0; i < server_certificate_cnt; i++) {
-			if (server_certificates[i].hostname && (!strcmp(hostname, server_certificates[i].hostname)) && (ipv4_nbo == server_certificates[i].ipv4_nbo)) {
-				return &server_certificates[i];
-			}
-		}
-	}
-	return NULL;
-}
-
-static struct server_certificate_t* add_server_certificate(const char *hostname, uint32_t ipv4_nbo, X509 *cert) {
-	struct server_certificate_t *new_server_certificates = realloc(server_certificates, sizeof(struct server_certificate_t) * (server_certificate_cnt + 1));
-	if (!new_server_certificates) {
-		logmsg(LLVL_FATAL, "Failed to realloc(3) server_certificates: %s", strerror(errno));
-		return NULL;
-	}
-	server_certificates = new_server_certificates;
-	memset(&server_certificates[server_certificate_cnt], 0, sizeof(struct server_certificate_t));
-	if (hostname) {
-		server_certificates[server_certificate_cnt].hostname = strdup(hostname);
-	}
-	server_certificates[server_certificate_cnt].ipv4_nbo = ipv4_nbo;
-	server_certificates[server_certificate_cnt].certificate = cert;
-	server_certificate_cnt += 1;
-	return &server_certificates[server_certificate_cnt - 1];
-}
+static struct map_t *server_certificates;
 
 static bool get_config_filename(char filename[static MAX_PATH_LEN], const char *suffix) {
 	return strxcat(filename, MAX_PATH_LEN, pgm_options->config_dir, "/", suffix, NULL);
@@ -192,6 +156,11 @@ bool certforgery_init(void) {
 		}
 		log_cert(LLVL_DEBUG, root_ca, "Used root certificate");
 	}
+	server_certificates = map_init();
+	if (!server_certificates) {
+		logmsg(LLVL_FATAL, "Failed to create server_certificates map.");
+		return false;
+	}
 	return true;
 }
 
@@ -216,8 +185,16 @@ EVP_PKEY *get_tls_client_key(void) {
 }
 
 X509 *forge_certificate_for_server(const char *hostname, uint32_t ipv4_nbo) {
-	struct server_certificate_t* entry = get_server_certificate(hostname, ipv4_nbo);
-	if (!entry) {
+	int hlen = hostname ? strlen(hostname) : 0;
+	int keylen = sizeof(uint32_t) + hlen;
+	uint8_t key[keylen];
+	memcpy(key + 0, &ipv4_nbo, sizeof(uint32_t));
+	if (hostname) {
+		memcpy(key + sizeof(uint32_t), hostname, hlen);
+	}
+
+	X509 *certificate = map_get(server_certificates, key, keylen);
+	if (!certificate) {
 		if (hostname) {
 			logmsg(LLVL_DEBUG, "Forging certificate for %s (" PRI_IPv4 ")", hostname, FMT_IPv4(ipv4_nbo));
 		} else {
@@ -244,24 +221,24 @@ X509 *forge_certificate_for_server(const char *hostname, uint32_t ipv4_nbo) {
 			snprintf(ipv4, sizeof(ipv4), PRI_IPv4, FMT_IPv4(ipv4_nbo));
 			certspec.common_name = ipv4;
 		}
-		X509 *cert = openssl_create_certificate(&certspec);
-		if (cert) {
-			entry = add_server_certificate(hostname, ipv4_nbo, cert);
-			if (!entry) {
-				logmsg(LLVL_ERROR, "Failed to add server certificate for %s to database.", hostname);
-				X509_free(cert);
-			} else if (pgm_options->log.dump_certificates) {
-				log_cert(LLVL_DEBUG, entry->certificate, "Created forged server certificate");
+		certificate = openssl_create_certificate(&certspec);
+		if (certificate) {
+			map_set(server_certificates, key, keylen, certificate, 0);
+			if (pgm_options->log.dump_certificates) {
+				log_cert(LLVL_DEBUG, certificate, "Created forged server certificate");
 			}
+		} else {
+			logmsg(LLVL_ERROR, "Forging server certificate failed.");
 		}
 	}
-
-	if (!entry) {
-		logmsg(LLVL_FATAL, "Could not create server certificate.");
-		return NULL;
+	if (certificate) {
+		X509_up_ref(certificate);
 	}
-	X509_up_ref(entry->certificate);
-	return entry->certificate;
+	return certificate;
+}
+
+static void free_certificate(void *server_cert) {
+	X509_free((X509*)server_cert);
 }
 
 void certforgery_deinit(void) {
@@ -269,4 +246,6 @@ void certforgery_deinit(void) {
 	EVP_PKEY_free(root_ca_key);
 	EVP_PKEY_free(server_key);
 	EVP_PKEY_free(client_key);
+	map_foreach_ptrvalue(server_certificates, free_certificate);
+	map_free(server_certificates);
 }
