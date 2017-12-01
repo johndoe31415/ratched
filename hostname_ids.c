@@ -50,29 +50,29 @@ unsigned int resolve_hostname_id(uint32_t ipv4_nbo, const char *hostname) {
 	struct map_t *map = map_get(ip_to_hostnames, &ipv4_nbo, sizeof(uint32_t));
 	if (!map) {
 		/* No entry for that IP address so far */
-		map = map_init();
+		map = map_new();
 		if (!map) {
 			logmsg(LLVL_FATAL, "Unable to create inner map for hostname entry for \"%s\", returning 0.", hostname);
 			return 0;
 		}
-		if (!map_set(ip_to_hostnames, &ipv4_nbo, sizeof(uint32_t), map, 0)) {
+		if (!map_set_ptr(ip_to_hostnames, &ipv4_nbo, sizeof(uint32_t), map)) {
 			logmsg(LLVL_FATAL, "Unable to register inner map for hostname entry for \"%s\", returning 0.", hostname);
 			map_free(map);
 			return 0;
 		}
 	}
 
-	int hostname_id = map_get_str_int(map, hostname);
+	int hostname_id = strmap_get_int(map, hostname);
 	if (hostname_id == -1) {
 		hostname_id = map->element_count + 1;
-		map_set_str_int(map, hostname, hostname_id);
+		strmap_set_int(map, hostname, hostname_id);
 	}
 
 	return hostname_id;
 }
 
 void init_hostname_ids(void) {
-	ip_to_hostnames = map_init();
+	ip_to_hostnames = map_new();
 }
 
 static void free_inner_map(void *inner_map) {

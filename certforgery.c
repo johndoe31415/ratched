@@ -156,7 +156,7 @@ bool certforgery_init(void) {
 		}
 		log_cert(LLVL_DEBUG, root_ca, "Used root certificate");
 	}
-	server_certificates = map_init();
+	server_certificates = map_new();
 	if (!server_certificates) {
 		logmsg(LLVL_FATAL, "Failed to create server_certificates map.");
 		return false;
@@ -223,7 +223,7 @@ X509 *forge_certificate_for_server(const char *hostname, uint32_t ipv4_nbo) {
 		}
 		certificate = openssl_create_certificate(&certspec);
 		if (certificate) {
-			map_set(server_certificates, key, keylen, certificate, 0);
+			map_set_ptr(server_certificates, key, keylen, certificate);
 			if (pgm_options->log.dump_certificates) {
 				log_cert(LLVL_DEBUG, certificate, "Created forged server certificate");
 			}

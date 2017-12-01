@@ -26,15 +26,24 @@
 
 #include <stdbool.h>
 
+enum map_element_type_t {
+	UNDEFINED,
+	ALLOCED_MEMORY,
+	VOID_PTR,
+	INTEGER,
+};
+
+union value_t {
+	void *pointer;
+	int integer;
+};
+
 struct map_element_t {
 	unsigned int key_len;
 	const void *key;
-	bool value_allocated;
+	enum map_element_type_t value_type;
 	unsigned int value_len;
-	union {
-		void *ptrvalue;
-		int intvalue;
-	};
+	union value_t value;
 };
 
 struct map_t {
@@ -43,24 +52,28 @@ struct map_t {
 };
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
-bool map_set_value(struct map_element_t *element, const void *new_value, unsigned int new_value_len);
+bool map_set_value(struct map_element_t *element, const enum map_element_type_t value_type, const union value_t new_value, const unsigned int new_value_len);
 struct map_element_t *map_getitem(struct map_t *map, const void *key, unsigned int key_len);
 void *map_get(struct map_t *map, const void *key, unsigned int key_len);
-int map_getint(struct map_t *map, const void *key, unsigned int key_len);
-struct map_element_t* map_set(struct map_t *map, const void *key, unsigned int key_len, const void *value, unsigned int value_len);
-int map_get_str_int(struct map_t *map, const char *strkey);
-void* map_get_str(struct map_t *map, const char *strkey);
-struct map_element_t* map_set_str(struct map_t *map, const char *strkey, const void *value, unsigned int value_len);
-void map_set_str_int(struct map_t *map, const char *strkey, int value);
+int map_get_int(struct map_t *map, const void *key, unsigned int key_len);
+struct map_element_t* map_set(struct map_t *map, const void *key, const unsigned int key_len, enum map_element_type_t value_type, const union value_t value, const unsigned int value_len);
+struct map_element_t* map_set_mem(struct map_t *map, const void *key, const unsigned int key_len, const void *value, const unsigned int value_len);
+struct map_element_t* map_set_ptr(struct map_t *map, const void *key, const unsigned int key_len, const void *value);
+struct map_element_t* map_set_int(struct map_t *map, const void *key, const unsigned int key_len, int value);
 void map_del_key(struct map_t *map, const void *key, unsigned int key_len);
-void strmap_set(struct map_t *map, const char *strkey, const char *strvalue);
+struct map_element_t *strmap_set_mem(struct map_t *map, const char *strkey, const void *value, const unsigned int value_len);
+struct map_element_t *strmap_set_ptr(struct map_t *map, const char *strkey, void *value);
+struct map_element_t *strmap_set_str(struct map_t *map, const char *strkey, const char *strvalue);
+struct map_element_t *strmap_set_int(struct map_t *map, const char *strkey, int value);
+void* strmap_get(struct map_t *map, const char *strkey);
+const char* strmap_get_str(struct map_t *map, const char *strkey);
+int strmap_get_int(struct map_t *map, const char *strkey);
 void strmap_del(struct map_t *map, const char *strkey);
-const char* strmap_get(struct map_t *map, const char *strkey);
 void map_dump(const struct map_t *map);
 void map_foreach(struct map_t *map, void (*callback_fnc)(struct map_element_t *element));
 void map_foreach_ptrvalue(struct map_t *map, void (*callback_fnc)(void *value));
 void map_free(struct map_t *map);
-struct map_t *map_init(void);
+struct map_t *map_new(void);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif

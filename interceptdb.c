@@ -35,7 +35,7 @@ static struct intercept_entry_t default_entry;
 static struct map_t *intercept_entry_by_hostname;
 
 struct intercept_entry_t* interceptdb_find_entry(const char *hostname, uint32_t ipv4_nbo) {
-	struct intercept_entry_t *entry = (struct intercept_entry_t*)map_get_str(intercept_entry_by_hostname, hostname);
+	struct intercept_entry_t *entry = (struct intercept_entry_t*)strmap_get(intercept_entry_by_hostname, hostname);
 	if (!entry) {
 		return &default_entry;
 	} else {
@@ -116,14 +116,14 @@ bool init_interceptdb(void) {
 		return false;
 	}
 
-	intercept_entry_by_hostname = map_init();
+	intercept_entry_by_hostname = map_new();
 	for (int i = 0; i < pgm_options->intercept.count; i++) {
 		struct intercept_config_t *pgm_config = pgm_options->intercept.config[i];
-		struct map_element_t *new_map_entry = map_set_str(intercept_entry_by_hostname, pgm_config->hostname, NULL, sizeof(struct intercept_entry_t));
+		struct map_element_t *new_map_entry = strmap_set_mem(intercept_entry_by_hostname, pgm_config->hostname, NULL, sizeof(struct intercept_entry_t));
 		if (!new_map_entry) {
 			return false;
 		}
-		struct intercept_entry_t *new_entry = (struct intercept_entry_t*)new_map_entry->ptrvalue;
+		struct intercept_entry_t *new_entry = (struct intercept_entry_t*)new_map_entry->value.pointer;
 		initialize_intercept_entry_from_pgm_config(new_entry, pgm_config);
 	}
 	return true;
