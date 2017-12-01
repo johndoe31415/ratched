@@ -71,6 +71,7 @@ static bool init_tls_intercept_entry(struct tls_endpoint_config_t *config, const
 	config->request_cert_from_peer = side_config->request_client_cert;
 	config->ciphersuites = side_config->ciphersuites;
 	config->supported_groups = side_config->supported_groups;
+	config->signature_algorithms = side_config->signature_algorithms;
 	return true;
 }
 

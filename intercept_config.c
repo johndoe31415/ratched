@@ -85,11 +85,13 @@ struct intercept_config_t* parse_intercept_config(const char *connection_params,
 		{ .key = "s_cakey", .parser = keyvalue_string, .target = &config->server.ca_key_filename },
 		{ .key = "s_ciphers", .parser = keyvalue_string, .target = &config->server.ciphersuites },
 		{ .key = "s_groups", .parser = keyvalue_string, .target = &config->server.supported_groups },
+		{ .key = "s_sigalgs", .parser = keyvalue_string, .target = &config->server.signature_algorithms },
 		{ .key = "c_certfile", .parser = keyvalue_string, .target = &config->client.cert_filename },
 		{ .key = "c_keyfile", .parser = keyvalue_string, .target = &config->client.key_filename },
 		{ .key = "c_chainfile", .parser = keyvalue_string, .target = &config->client.chain_filename },
 		{ .key = "c_ciphers", .parser = keyvalue_string, .target = &config->client.ciphersuites },
 		{ .key = "c_groups", .parser = keyvalue_string, .target = &config->client.supported_groups },
+		{ .key = "c_sigalgs", .parser = keyvalue_string, .target = &config->client.signature_algorithms },
 		{ 0 }
 	};
 

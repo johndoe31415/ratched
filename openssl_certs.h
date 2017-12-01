@@ -55,6 +55,7 @@ struct tls_endpoint_config_t {
 	bool request_cert_from_peer;
 	const char *ciphersuites;
 	const char *supported_groups;
+	const char *signature_algorithms;
 	X509 *cert;
 	EVP_PKEY *key;
 	STACK_OF(X509) *chain;

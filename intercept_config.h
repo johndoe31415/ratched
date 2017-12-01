@@ -47,6 +47,7 @@ struct intercept_side_config_t {
 
 	char *ciphersuites;
 	char *supported_groups;
+	char *signature_algorithms;
 };
 
 struct intercept_config_t {

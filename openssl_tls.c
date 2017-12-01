@@ -158,6 +158,14 @@ struct tls_connection_t openssl_tls_connect(const struct tls_connection_request_
 		}
 	}
 
+	if (request->config && request->config->signature_algorithms) {
+		if (!SSL_CTX_set1_sigalgs_list(sslctx, request->config->signature_algorithms)) {
+			logmsgext(LLVL_ERROR, FLAG_OPENSSL_ERROR, "openssl_tls %s: SSL_CTX_set1_sigalgs_list(%s) failed.", request->is_server ? "server" : "client", request->config->signature_algorithms);
+			SSL_CTX_free(sslctx);
+			return result;
+		}
+	}
+
 	/* If a server, set a status request callback as well */
 	if (request->is_server) {
 		if (!SSL_CTX_set_tlsext_status_cb(sslctx, ocsp_status_request_callback)) {

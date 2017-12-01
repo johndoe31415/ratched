@@ -173,29 +173,33 @@ The arguments which are valid for the --intercept argument are as follows:
                         certificate, in PEM format.
   s_chainfile=filename  Specifies the X.509 certificate chain that is to be
                         sent to the client, in PEM format.
-  s_cacert=filename     Specifies the X.509 CA certificate that issues server
+  s_cacert=filename     The X.509 CA certificate that issues server
                         certificates, in PEM format.
-  s_cakey=filename      Specifies the X.509 CA certificate key that signs
-                        server certificates, in PEM format.
-  s_ciphers=ciphers     Specifies the cipher suite string that the ratched
-                        TLS server uses.
-  s_groups=groups       Specifies the key agreement 'supported groups' string
-                        (formerly known as 'elliptic curves') that the
-                        ratched TLS server uses.
+  s_cakey=filename      The X.509 CA certificate key that signs server
+                        certificates, in PEM format.
+  s_ciphers=ciphers     The cipher suite string that the ratched TLS server
+                        uses.
+  s_groups=groups       The key agreement 'supported groups' string (formerly
+                        known as 'elliptic curves') that the ratched TLS
+                        server uses.
+  s_sigalgs=algs        The key agreement 'signature algorithms' string which
+                        the ratched TLS server uses.
   c_certfile=filename   Specifies an X.509 certificate in PEM format that
                         should be used by ratched as a client certificate. It
                         will only be used when the connecting client also
                         provided a client certificate. Must be used in
                         conjunction with c_keyfile.
-  c_keyfile=filename    Specifies the private key for the given client
-                        certificate, in PEM format.
-  c_chainfile=filename  Specifies the X.509 certificate chain that is to be
-                        sent to the server, in PEM format.
-  c_ciphers=ciphers     Specifies the cipher suite string that the ratched
-                        TLS client uses.
-  c_groups=groups       Specifies the key agreement 'supported groups' string
-                        (formerly known as 'elliptic curves') that the
-                        ratched TLS client uses.
+  c_keyfile=filename    The private key for the given client certificate, in
+                        PEM format.
+  c_chainfile=filename  The X.509 certificate chain that is to be sent to the
+                        server, in PEM format.
+  c_ciphers=ciphers     The cipher suite string that the ratched TLS client
+                        uses.
+  c_groups=groups       The key agreement 'supported groups' string (formerly
+                        known as 'elliptic curves') that the ratched TLS
+                        client uses.
+  c_sigalgs=algs        The key agreement 'signature algorithms' string which
+                        the ratched TLS client uses.
 
 examples:
     $ ratched -o output.pcapng
