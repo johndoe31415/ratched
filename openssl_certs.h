@@ -110,6 +110,9 @@ X509* openssl_load_stored_certificate(const struct certificatespec_t *certspec, 
 X509 *forge_client_certificate(X509 *original_client_cert, EVP_PKEY *new_subject_pubkey, X509 *new_issuer_cert, EVP_PKEY *new_issuer_privkey, bool recalculate_key_identifiers, bool mark_certificate);
 void dump_tls_endpoint_config(char *text, int text_maxlen, const struct tls_endpoint_config_t *config);
 bool init_tls_endpoint_config(struct tls_endpoint_config_t *config, const char *description, const struct tls_endpoint_cert_source_t *certsrc);
+bool get_certificate_hash(uint8_t hash_value[static 32], X509 *cert);
+bool get_public_key_hash(uint8_t hash_value[static 32], EVP_PKEY *pubkey);
+bool get_certificate_public_key_hash(uint8_t hash_value[static 32], X509 *cert);
 void free_tls_endpoint_config(struct tls_endpoint_config_t *config);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 

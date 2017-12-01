@@ -467,6 +467,77 @@ bool init_tls_endpoint_config(struct tls_endpoint_config_t *config, const char *
 	return true;
 }
 
+static bool serialize_X509_to_BIO(BIO *bio, void *arg) {
+	if (!i2d_X509_bio(bio, (X509*)arg)) {
+		logmsgext(LLVL_ERROR, FLAG_OPENSSL_ERROR, "Unable to serialize X.509 certificate to DER.");
+		return false;
+	} else {
+		return true;
+	}
+}
+
+static bool serialize_PUBKEY_to_BIO(BIO *bio, void *arg) {
+	if (!i2d_PUBKEY_bio(bio, (EVP_PKEY*)arg)) {
+		logmsgext(LLVL_ERROR, FLAG_OPENSSL_ERROR, "Unable to serialize EVP_PKEY to DER.");
+		return false;
+	} else {
+		return true;
+	}
+}
+
+static bool hash_serialized_object(uint8_t hash_value[static 32], bool (*serialization_fnc)(BIO *bio, void *arg), void *arg) {
+	BIO *asn1_bio = BIO_new(BIO_s_null());
+	if (!asn1_bio) {
+		logmsgext(LLVL_ERROR, FLAG_OPENSSL_ERROR, "Failed to create buffer asn1_bio BIO.");
+		return false;
+	}
+	BIO *md_bio = BIO_new(BIO_f_md());
+	if (!md_bio) {
+		logmsgext(LLVL_ERROR, FLAG_OPENSSL_ERROR, "Failed to create message digest BIO.");
+		BIO_free(asn1_bio);
+		return false;
+	}
+	if (!BIO_set_md(md_bio, EVP_sha256())) {
+		logmsgext(LLVL_ERROR, FLAG_OPENSSL_ERROR, "Failed to set EVP_sha256() as message digest BIO.");
+		BIO_free(md_bio);
+		BIO_free(asn1_bio);
+		return false;
+	}
+	BIO_push(md_bio, asn1_bio);
+
+	if (!serialization_fnc(md_bio, arg)) {
+		BIO_free_all(md_bio);
+		return false;
+	}
+
+	if (BIO_gets(md_bio, (char*)hash_value, 32) != 32) {
+		BIO_free_all(md_bio);
+		return false;
+	}
+
+	BIO_free_all(md_bio);
+	return true;
+}
+
+bool get_certificate_hash(uint8_t hash_value[static 32], X509 *cert) {
+	return hash_serialized_object(hash_value, serialize_X509_to_BIO, cert);
+}
+
+bool get_public_key_hash(uint8_t hash_value[static 32], EVP_PKEY *pubkey) {
+	return hash_serialized_object(hash_value, serialize_PUBKEY_to_BIO, pubkey);
+}
+
+bool get_certificate_public_key_hash(uint8_t hash_value[static 32], X509 *cert) {
+	EVP_PKEY *pubkey = X509_get_pubkey(cert);
+	if (!pubkey) {
+		logmsgext(LLVL_ERROR, FLAG_OPENSSL_ERROR, "Could not get certificate public key.");
+		return false;
+	}
+	bool success = get_public_key_hash(hash_value, pubkey);
+	EVP_PKEY_free(pubkey);
+	return success;
+}
+
 void free_tls_endpoint_config(struct tls_endpoint_config_t *config) {
 	X509_free(config->cert);
 	EVP_PKEY_free(config->key);

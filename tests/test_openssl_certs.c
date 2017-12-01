@@ -80,13 +80,60 @@ static void test_cert_forgery(void) {
 	X509_free(crt);
 	EVP_PKEY_free(key);
 	openssl_deinit();
+}
 
+static void test_cert_id(void) {
+	openssl_init();
+	X509 *cert = openssl_load_cert("local.crt", "local.crt", false);
+	test_assert(cert);
+	uint8_t hashval[32] = { 0 };
+	const uint8_t expected_hashval[32] = {
+		0x6e, 0x2a, 0xed, 0x85, 0x3c, 0xe5, 0x97, 0x54, 0x64, 0x61, 0xd0, 0x51, 0xa5, 0x9f, 0xb7, 0xbb,
+		0x49, 0xe6, 0xca, 0x46, 0x82, 0x6f, 0x8c, 0xa2, 0x8d, 0xdf, 0xf1, 0x0d, 0x50, 0xbd, 0x1e, 0xa4
+	};
+	test_assert(get_certificate_hash(hashval, cert));
+	test_assert(memcmp(hashval, expected_hashval, 32) == 0);
+	X509_free(cert);
+	openssl_deinit();
+}
+
+static void test_cert_pubkey_id(void) {
+	openssl_init();
+	X509 *cert = openssl_load_cert("local.crt", "local.crt", false);
+	test_assert(cert);
+	uint8_t hashval[32] = { 0 };
+	const uint8_t expected_hashval[32] = {
+		0x80, 0x51, 0x45, 0x0f, 0xfc, 0xa2, 0x87, 0x1d, 0x51, 0x31, 0xc8, 0x08, 0xdb, 0xff, 0x33, 0x83,
+		0xeb, 0x54, 0x9a, 0x44, 0xa2, 0x06, 0x5c, 0xca, 0x8e, 0x40, 0x60, 0x49, 0x64, 0x3c, 0x98, 0x48
+	};
+	test_assert(get_certificate_public_key_hash(hashval, cert));
+	test_assert(memcmp(hashval, expected_hashval, 32) == 0);
+	X509_free(cert);
+	openssl_deinit();
+}
+
+static void test_key_pubkey_id(void) {
+	openssl_init();
+	EVP_PKEY *key = openssl_load_key("local.key", "local.key", false);
+	test_assert(key);
+	uint8_t hashval[32] = { 0 };
+	const uint8_t expected_hashval[32] = {
+		0x80, 0x51, 0x45, 0x0f, 0xfc, 0xa2, 0x87, 0x1d, 0x51, 0x31, 0xc8, 0x08, 0xdb, 0xff, 0x33, 0x83,
+		0xeb, 0x54, 0x9a, 0x44, 0xa2, 0x06, 0x5c, 0xca, 0x8e, 0x40, 0x60, 0x49, 0x64, 0x3c, 0x98, 0x48
+	};
+	test_assert(get_public_key_hash(hashval, key));
+	test_assert(memcmp(hashval, expected_hashval, 32) == 0);
+	EVP_PKEY_free(key);
+	openssl_deinit();
 }
 
 int main(int argc, char **argv) {
 	test_start(argc, argv);
 	test_cert_generation();
 	test_cert_forgery();
+	test_cert_id();
+	test_cert_pubkey_id();
+	test_key_pubkey_id();
 	test_finished();
 	return 0;
 }
