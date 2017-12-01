@@ -61,8 +61,8 @@ struct intercept_config_t {
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
 const char *interception_mode_to_str(enum interception_mode_t value);
-struct intercept_config_t* parse_intercept_config(const char *connection_params, bool contains_hostname);
-void free_intercept_config(struct intercept_config_t **pconfig);
+struct intercept_config_t* intercept_config_new(const char *connection_params, bool contains_hostname);
+void intercept_config_free(struct intercept_config_t *config);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif

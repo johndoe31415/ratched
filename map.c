@@ -223,6 +223,10 @@ struct map_element_t *strmap_set_int(struct map_t *map, const char *strkey, int 
 	return map_set_int(map, strkey, strlen(strkey) + 1, value);
 }
 
+bool strmap_has(struct map_t *map, const char *strkey) {
+	return (map_getitem(map, strkey, strlen(strkey) + 1) != NULL);
+}
+
 void* strmap_get(struct map_t *map, const char *strkey) {
 	return map_get(map, strkey, strlen(strkey) + 1);
 }

@@ -54,7 +54,7 @@ static bool side_plausibility_check(const char *hostname, const char *sidename, 
 	return true;
 }
 
-struct intercept_config_t* parse_intercept_config(const char *connection_params, bool contains_hostname) {
+struct intercept_config_t* intercept_config_new(const char *connection_params, bool contains_hostname) {
 	struct intercept_config_t *config = calloc(1, sizeof(struct intercept_config_t));
 	if (!config) {
 		logmsg(LLVL_FATAL, "Cannot calloc(3) intercept_config_t: %s", strerror(errno));
@@ -96,7 +96,7 @@ struct intercept_config_t* parse_intercept_config(const char *connection_params,
 	};
 
 	if (parse_keyvalue_list(connection_params, contains_hostname ? 1 : 0, definition, &config->hostname) == -1) {
-		free_intercept_config(&config);
+		intercept_config_free(config);
 		return NULL;
 	}
 
@@ -106,11 +106,11 @@ struct intercept_config_t* parse_intercept_config(const char *connection_params,
 	}
 
 	if (!side_plausibility_check(contains_hostname ? config->hostname : "default config", "server", &config->server)) {
-		free_intercept_config(&config);
+		intercept_config_free(config);
 		return NULL;
 	}
 	if (!side_plausibility_check(contains_hostname ? config->hostname : "default config", "client", &config->client)) {
-		free_intercept_config(&config);
+		intercept_config_free(config);
 		return NULL;
 	}
 	if (config->client.cert_filename) {
@@ -125,7 +125,7 @@ struct intercept_config_t* parse_intercept_config(const char *connection_params,
 	return config;
 }
 
-static void free_intercept_side_config(struct intercept_side_config_t *side) {
+static void intercept_side_config_free(struct intercept_side_config_t *side) {
 	free(side->cert_filename);
 	free(side->key_filename);
 	free(side->chain_filename);
@@ -136,17 +136,12 @@ static void free_intercept_side_config(struct intercept_side_config_t *side) {
 	memset(side, 0, sizeof(struct intercept_side_config_t));
 }
 
-void free_intercept_config(struct intercept_config_t **pconfig) {
-	struct intercept_config_t *config = *pconfig;
+void intercept_config_free(struct intercept_config_t *config) {
 	if (!config) {
 		return;
 	}
-
 	free(config->hostname);
-	config->hostname = NULL;
-	free_intercept_side_config(&config->server);
-	free_intercept_side_config(&config->client);
-
+	intercept_side_config_free(&config->server);
+	intercept_side_config_free(&config->client);
 	free(config);
-	*pconfig = NULL;
 }

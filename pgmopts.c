@@ -363,26 +363,25 @@ static bool parse_keyspec(const char *arg) {
 }
 
 static bool append_custom_intercept_config(const char *connection_params) {
-	struct intercept_config_t *entry = parse_intercept_config(connection_params, true);
+	struct intercept_config_t *entry = intercept_config_new(connection_params, true);
 	if (!entry) {
 		return false;
 	}
-
-	struct intercept_config_t **new_config = realloc(pgm_options_rw.intercept.config, sizeof(struct intercept_config_t*) * (pgm_options_rw.intercept.count + 1));
-	if (!new_config) {
-		logmsg(LLVL_FATAL, "Failed to realloc(3) pgm_options_rw.intercept.config: %s", strerror(errno));
-		free_intercept_config(&entry);
+	fprintf(stderr, "'%s'\n", entry->hostname);
+	if (strmap_has(pgm_options_rw.custom_configs, entry->hostname)) {
+		snprintf(parsing_error, sizeof(parsing_error), "hostname '%s' specified at least twice.", entry->hostname);
 		return false;
 	}
-	pgm_options_rw.intercept.config = new_config;
 
-	pgm_options_rw.intercept.config[pgm_options_rw.intercept.count] = entry;
-	pgm_options_rw.intercept.count++;
+	if (!strmap_set_ptr(pgm_options_rw.custom_configs, entry->hostname, entry)) {
+		return false;
+	}
 
 	return true;
 }
 
 bool parse_options(int argc, char **argv) {
+	pgm_options_rw.custom_configs = map_new();
 	pgm_options_rw.network.server_socket.ipv4_nbo = htonl(IPv4ADDR(127, 0, 0, 1));
 	pgm_options_rw.network.server_socket.port_nbo = htons(9999);
 
@@ -505,7 +504,7 @@ bool parse_options(int argc, char **argv) {
 
 			case ARG_DEFAULTS_SHORT:
 			case ARG_DEFAULTS:
-				pgm_options_rw.default_config = parse_intercept_config(optarg, false);
+				pgm_options_rw.default_config = intercept_config_new(optarg, false);
 				if (!pgm_options_rw.default_config) {
 					return false;
 				}
@@ -557,16 +556,16 @@ static void freenull(char **argument) {
 	*argument = NULL;
 }
 
+static void free_intercept_config_void(void *intercept_config) {
+	intercept_config_free((struct intercept_config_t*)intercept_config);
+}
+
 void free_pgm_options(void) {
 	freenull(&pgm_options_rw.config_dir);
 
-	free_intercept_config(&pgm_options_rw.default_config);
-	for (int i = 0; i < pgm_options_rw.intercept.count; i++) {
-		free_intercept_config(&pgm_options_rw.intercept.config[i]);
-	}
-	free(pgm_options_rw.intercept.config);
-	pgm_options_rw.intercept.config = NULL;
-	pgm_options_rw.intercept.count = 0;
+	intercept_config_free(pgm_options_rw.default_config);
+	map_foreach_ptrvalue(pgm_options_rw.custom_configs, free_intercept_config_void);
+	map_free(pgm_options_rw.custom_configs);
 
 	if ((pgm_options_rw.keyspec.keytype == KEYTYPE_ECC) && pgm_options_rw.keyspec.ecc.curvename) {
 		freenull(&pgm_options_rw.keyspec.ecc.curvename);

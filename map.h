@@ -65,6 +65,7 @@ struct map_element_t *strmap_set_mem(struct map_t *map, const char *strkey, cons
 struct map_element_t *strmap_set_ptr(struct map_t *map, const char *strkey, void *value);
 struct map_element_t *strmap_set_str(struct map_t *map, const char *strkey, const char *strvalue);
 struct map_element_t *strmap_set_int(struct map_t *map, const char *strkey, int value);
+bool strmap_has(struct map_t *map, const char *strkey);
 void* strmap_get(struct map_t *map, const char *strkey);
 const char* strmap_get_str(struct map_t *map, const char *strkey);
 int strmap_get_int(struct map_t *map, const char *strkey);

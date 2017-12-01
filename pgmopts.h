@@ -26,6 +26,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "map.h"
 #include "logging.h"
 
 enum keytype_t {
@@ -75,10 +76,7 @@ struct pgmopts_t {
 	} forged_certs;
 
 	struct intercept_config_t *default_config;
-	struct {
-		struct intercept_config_t **config;
-		unsigned int count;
-	} intercept;
+	struct map_t *custom_configs;
 
 	struct {
 		enum keytype_t keytype;
