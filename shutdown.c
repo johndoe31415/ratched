@@ -50,5 +50,9 @@ bool init_shutdown_handler(void) {
 		logmsg(LLVL_ERROR, "sigaction failed to install SIGHUP handler: %s", strerror(errno));
 		return false;
 	}
+	if (sigaction(SIGTERM, &action, NULL) != 0) {
+		logmsg(LLVL_ERROR, "sigaction failed to install SIGTERM handler: %s", strerror(errno));
+		return false;
+	}
 	return true;
 }
