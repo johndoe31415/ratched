@@ -306,6 +306,12 @@ void teardown_tcp_ip_connection(struct connection_t *conn, bool direction) {
 	pthread_mutex_unlock(&conn->mtdump->mutex);
 }
 
+void flush_tcp_ip_connection(struct connection_t *conn) {
+	pthread_mutex_lock(&conn->mtdump->mutex);
+	fflush(conn->mtdump->f);
+	pthread_mutex_unlock(&conn->mtdump->mutex);
+}
+
 bool open_pcap_write(struct multithread_dumper_t *mtdump, const char *filename, const char *comment) {
 	memset(mtdump, 0, sizeof(struct multithread_dumper_t));
 	pthread_mutex_init(&mtdump->mutex, NULL);

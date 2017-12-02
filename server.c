@@ -212,6 +212,7 @@ static void start_tls_forwarding(struct intercept_entry_t *decision, const struc
 		create_tcp_ip_connection(ctx->mtdump, &conn, comment, pgm_options->pcapng.use_ipv6_encapsulation);
 		tls_forward_data(accepted_ssl.ssl, connected_ssl.ssl, &conn);
 		teardown_tcp_ip_connection(&conn, false);
+		flush_tcp_ip_connection(&conn);
 	} else {
 		logmsg(LLVL_ERROR, "One TLS connection couldn't be established (connected %p, accepted %p). Cannot forward.", connected_ssl.ssl, accepted_ssl.ssl);
 	}

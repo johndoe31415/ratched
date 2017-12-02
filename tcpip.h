@@ -58,6 +58,7 @@ void create_tcp_ip_connection(struct multithread_dumper_t *mtdump, struct connec
 void append_tcp_ip_data(struct connection_t *conn, bool direction, const uint8_t *payload, int payload_len);
 void append_tcp_ip_string(struct connection_t *conn, bool direction, const char *string);
 void teardown_tcp_ip_connection(struct connection_t *conn, bool direction);
+void flush_tcp_ip_connection(struct connection_t *conn);
 bool open_pcap_write(struct multithread_dumper_t *mtdump, const char *filename, const char *comment);
 bool close_pcap(struct multithread_dumper_t *mtdump);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
