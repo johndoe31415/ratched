@@ -76,18 +76,20 @@ class RatchedIntegrationTests(unittest.TestCase):
 				# Process still alive after init timeout. All good!
 				pass
 
-		self._active_processes.append(proc)
+		self._active_processes.append([ cmd, proc ])
 		return proc
 
 	def tearDown(self):
-		for proc in self._active_processes:
-			print(proc.stdout.read())
-			print(proc.stderr.read())
+		for (cmd, proc) in self._active_processes:
+#			print(self._format_cmdline(cmd))
+#			print(proc.stdout.read())
+#			print(proc.stderr.read())
+#			print()
 			proc.stdout.close()
 			proc.stderr.close()
 			proc.stdin.close()
 			proc.send_signal(signal.SIGHUP)
-		for proc in self._active_processes:
+		for (cmd, proc) in self._active_processes:
 			try:
 				proc.wait(timeout = 0.5)
 			except subprocess.TimeoutExpired:
