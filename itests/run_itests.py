@@ -41,6 +41,20 @@ def read_if_have_data(f, maxlen = None, timeout_secs = 0.1):
 		return f.read(maxlen)
 
 class RatchedIntegrationTests(unittest.TestCase):
+	_UNSCALED_TIMEOUTS = {
+		"wait_sserver_ready":			0.1,
+		"wait_sclient_ready":			0.1,
+		"wait_sserver_startup_msgs":	0.25,
+		"wait_sclient_startup_msgs":	0.25,
+		"wait_ratched_ready":			0.1,
+		"srv_to_cli_msg":				0.1,
+		"cli_to_srv_msg":				0.1,
+		"wait_sserver_settle":			0.5,
+		"wait_after_sigterm":			0.5,
+	}
+	_TIMEOUTS = { key: 3.0 * value for (key, value) in _UNSCALED_TIMEOUTS.items() }
+
+
 	def __init__(self, *args, **kwargs):
 		unittest.TestCase.__init__(self, *args, **kwargs)
 		self._ratched_binary = "../ratched"
@@ -88,10 +102,10 @@ class RatchedIntegrationTests(unittest.TestCase):
 			proc.stdout.close()
 			proc.stderr.close()
 			proc.stdin.close()
-			proc.send_signal(signal.SIGHUP)
+			proc.send_signal(signal.SIGTERM)
 		for (cmd, proc) in self._active_processes:
 			try:
-				proc.wait(timeout = 0.5)
+				proc.wait(timeout = self._TIMEOUTS["wait_after_sigterm"])
 			except subprocess.TimeoutExpired:
 				# SIGTERM doesn't work. Alright, the hard way.
 				proc.send_signal(signal.SIGKILL)
@@ -114,13 +128,13 @@ class RatchedIntegrationTests(unittest.TestCase):
 		nonce1 = self._get_binnonce()
 		srv_proc.stdin.write(nonce1)
 		srv_proc.stdin.flush()
-		(cli_stdout, cli_stderr) = self._procread(cli_proc, timeout_secs = 0.1)
+		(cli_stdout, cli_stderr) = self._procread(cli_proc, timeout_secs = self._TIMEOUTS["srv_to_cli_msg"])
 		self.assertTrue((nonce1 in cli_stdout) == state)
 
 		nonce2 = self._get_binnonce()
 		cli_proc.stdin.write(nonce2)
 		cli_proc.stdin.flush()
-		(srv_stdout, srv_stderr) = self._procread(srv_proc, timeout_secs = 0.1)
+		(srv_stdout, srv_stderr) = self._procread(srv_proc, timeout_secs = self._TIMEOUTS["cli_to_srv_msg"])
 		self.assertTrue((nonce2 in srv_stdout) == state)
 		return (nonce1, nonce2)
 
@@ -130,13 +144,14 @@ class RatchedIntegrationTests(unittest.TestCase):
 	def _assert_not_connected(self, srv_proc, cli_proc):
 		return self._assert_connection_state(srv_proc, cli_proc, False)
 
-	def _start_sserver(self, servername = "bar", startup_time = 0.1):
+	def _start_sserver(self, servername = "bar"):
 		cmd = [ "openssl", "s_server" ]
 		cmd += [ "-cert", self._test_ca_data_dir + "server_%s.crt" % (servername) ]
 		cmd += [ "-key", self._test_ca_data_dir + "server_%s.key" % (servername) ]
 		cmd += [ "-cert_chain", self._test_ca_data_dir + "intermediate.crt" ]
 		cmd += [ "-accept", "10000" ]
-		srv = self._start_child(cmd, startup_time = startup_time)
+		srv = self._start_child(cmd, startup_time = self._TIMEOUTS["wait_sserver_ready"])
+		time.sleep(self._TIMEOUTS["wait_sserver_settle"])
 		return srv
 
 	def _start_sclient(self, verify = False, include_trusted_ca = False, port = 10000, servername = None, verify_hostname = False, startup_time = None):
@@ -150,22 +165,22 @@ class RatchedIntegrationTests(unittest.TestCase):
 			cmd += [ "-servername", servername ]
 			if verify_hostname:
 				cmd += [ "-verify_hostname", servername ]
-		cli = self._start_child(cmd, startup_time = 0.1)
+		cli = self._start_child(cmd, startup_time = self._TIMEOUTS["wait_sclient_ready"])
 		return cli
 
-	def _start_ratched(self, args = None, startup_time = 0.1):
+	def _start_ratched(self, args = None):
 		cmd = [ self._ratched_binary ]
 		cmd += [ "-l", "127.0.0.1:10001" ]
 		cmd += [ "-f", "127.0.0.1:10000" ]
 		cmd += [ "-o", "output.pcapng" ]
 		if args is not None:
 			cmd += args
-		ratched = self._start_child(cmd, startup_time = startup_time)
+		ratched = self._start_child(cmd, startup_time = self._TIMEOUTS["wait_ratched_ready"])
 		return ratched
 
 	def _assert_tls_works(self, srv, cli):
-		(srv_stdout, srv_stderr) = self._procread(srv, timeout_secs = 0.25)
-		(cli_stdout, cli_stderr) = self._procread(cli, timeout_secs = 0.25)
+		(srv_stdout, srv_stderr) = self._procread(srv, timeout_secs = self._TIMEOUTS["wait_sserver_startup_msgs"])
+		(cli_stdout, cli_stderr) = self._procread(cli, timeout_secs = self._TIMEOUTS["wait_sclient_startup_msgs"])
 		return self._assert_connected(srv, cli)
 
 	def _assert_tls_interception_works(self, srv, cli, interception_pcapng_filename = "output.pcapng"):
@@ -186,13 +201,13 @@ class RatchedIntegrationTests(unittest.TestCase):
 		srv = self._start_sserver()
 		with self.assertRaises(Exception):
 			# Client cannot connect and process will terminate.
-			cli = self._start_sclient(verify = True, include_trusted_ca = False, startup_time = 0.1)
+			cli = self._start_sclient(verify = True, include_trusted_ca = False)
 
 	def test_server_doesnt_work_with_wrong_hostname(self):
 		srv = self._start_sserver()
 		with self.assertRaises(Exception):
 			# Client cannot connect and process will terminate.
-			cli = self._start_sclient(verify = True, include_trusted_ca = True, servername = "xyz", verify_hostname = True, startup_time = 0.1)
+			cli = self._start_sclient(verify = True, include_trusted_ca = True, servername = "xyz", verify_hostname = True)
 
 	def test_server_works_with_root_ca(self):
 		srv = self._start_sserver()
