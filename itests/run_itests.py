@@ -47,7 +47,19 @@ class RatchedIntegrationTests(unittest.TestCase):
 		self._test_ca_data_dir = "demo_ca/"
 		self._active_processes = [ ]
 
+	@staticmethod
+	def _format_cmdline(cmd):
+		def escape_arg(arg):
+			if any(escchar in arg for escchar in "\"' "):
+				# We need to escape
+				return "\"%s\"" % (arg.replace("\"", "\\\""))
+			else:
+				# No escaping needed
+				return arg
+		return " ".join(escape_arg(arg) for arg in cmd)
+
 	def _start_child(self, cmd, startup_time = None):
+		print(self._format_cmdline(cmd))
 		proc = subprocess.Popen(cmd, stdout = subprocess.PIPE, stderr = subprocess.PIPE, stdin = subprocess.PIPE)
 		set_fd_nonblocking(proc.stdout)
 		set_fd_nonblocking(proc.stderr)

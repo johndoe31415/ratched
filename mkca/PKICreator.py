@@ -29,7 +29,8 @@ class PKICreator(object):
 		"basicConstraints":			"critical,CA:TRUE",
 		"subjectKeyIdentifier":		"hash",
 		"authorityKeyIdentifier":	"keyid,issuer:always",
-		"keyUsage":					"digitalSignature,keyEncipherment",
+		"keyUsage":					"critical,digitalSignature,keyCertSign,cRLSign",
+		"extendedKeyUsage":			"codeSigning,emailProtection,timeStamping,OCSPSigning",
 	}
 
 	_CONFIG_DICT_CLIENT_CERT = {
@@ -37,7 +38,7 @@ class PKICreator(object):
 		"basicConstraints":			"critical,CA:FALSE",
 		"subjectKeyIdentifier":		"hash",
 		"authorityKeyIdentifier":	"keyid,issuer:always",
-		"keyUsage":					"digitalSignature, keyAgreement, keyEncipherment",
+		"keyUsage":					"critical,digitalSignature,keyAgreement,keyEncipherment",
 		"extendedKeyUsage":			"clientAuth",
 	}
 
@@ -46,7 +47,7 @@ class PKICreator(object):
 		"basicConstraints":			"critical,CA:FALSE",
 		"subjectKeyIdentifier":		"hash",
 		"authorityKeyIdentifier":	"keyid,issuer:always",
-		"keyUsage":					"digitalSignature,keyAgreement,keyEncipherment",
+		"keyUsage":					"critical,digitalSignature,keyAgreement,keyEncipherment",
 		"extendedKeyUsage":			"serverAuth",
 	}
 
