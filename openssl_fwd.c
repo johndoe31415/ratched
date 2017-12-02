@@ -34,6 +34,7 @@ struct tls_forwarding_data_t {
 	SSL *write_ssl;
 	struct connection_t *connection;
 	bool direction;
+	unsigned int bytes_forwarded;
 };
 
 static void* tls_forwarding_thread_fnc(void *vctx) {
@@ -55,6 +56,7 @@ static void* tls_forwarding_thread_fnc(void *vctx) {
 			logmsg(LLVL_ERROR, "%zd bytes written when TLS forwarding %p -> %p, %zd bytes expected.", length_written, ctx->read_ssl, ctx->write_ssl, length_read);
 			break;
 		}
+		ctx->bytes_forwarded += length_written;
 	}
 	SSL_shutdown(ctx->read_ssl);
 	SSL_shutdown(ctx->write_ssl);
@@ -88,6 +90,6 @@ void tls_forward_data(SSL *ssl1, SSL *ssl2, struct connection_t *conn) {
 	pthread_join(dir1_thread, NULL);
 	pthread_join(dir2_thread, NULL);
 
-	logmsg(LLVL_INFO, "Closed TLS forwarding %p <-> %p", ssl1, ssl2);
+	logmsg(LLVL_INFO, "Closed TLS forwarding %p <-> %p (forwarded %u bytes in one, %u bytes in the other direction)", ssl1, ssl2, dir1.bytes_forwarded, dir2.bytes_forwarded);
 }
 
