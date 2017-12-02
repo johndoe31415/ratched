@@ -30,7 +30,7 @@ class PKICreator(object):
 		"subjectKeyIdentifier":		"hash",
 		"authorityKeyIdentifier":	"keyid,issuer:always",
 		"keyUsage":					"critical,digitalSignature,keyCertSign,cRLSign",
-		"extendedKeyUsage":			"codeSigning,emailProtection,timeStamping,OCSPSigning",
+#		"extendedKeyUsage":			"codeSigning,emailProtection,timeStamping,OCSPSigning",
 	}
 
 	_CONFIG_DICT_CLIENT_CERT = {

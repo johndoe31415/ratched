@@ -67,7 +67,7 @@ class RatchedIntegrationTests(unittest.TestCase):
 			try:
 				result = proc.wait(timeout = startup_time)
 				# Process died!
-				raise Exception("Process '%s' died with status %d before initialized after %.1f sec." % (" ".join(cmd), proc.returncode, startup_time))
+				raise Exception("Process '%s' died with status %d before initialized after %.1f sec." % (self._format_cmdline(cmd), proc.returncode, startup_time))
 			except subprocess.TimeoutExpired:
 				# Process still alive after init timeout. All good!
 				pass
@@ -130,7 +130,7 @@ class RatchedIntegrationTests(unittest.TestCase):
 		cmd += [ "-connect", "127.0.0.1:10000" ]
 		if verify:
 			cmd += [ "-verify", "3", "-verify_return_error" ]
-			cmd += [ "-verifyCAfile", self._test_ca_data_dir + "root.crt" ]
+			cmd += [ "-CAfile", self._test_ca_data_dir + "root.crt" ]
 		cli = self._start_child(cmd, startup_time = 0.1)
 		return cli
 
@@ -151,7 +151,6 @@ class RatchedIntegrationTests(unittest.TestCase):
 
 	def test_server_works_wit_root_ca(self):
 		srv = self._start_sserver()
-		time.sleep(100)
 		cli = self._start_sclient(verify = True)
 
 
