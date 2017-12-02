@@ -59,14 +59,18 @@ class RatchedIntegrationTests(unittest.TestCase):
 		return " ".join(escape_arg(arg) for arg in cmd)
 
 	def _start_child(self, cmd, startup_time = None):
-		print(self._format_cmdline(cmd))
+#		print(self._format_cmdline(cmd))
 		proc = subprocess.Popen(cmd, stdout = subprocess.PIPE, stderr = subprocess.PIPE, stdin = subprocess.PIPE)
 		set_fd_nonblocking(proc.stdout)
 		set_fd_nonblocking(proc.stderr)
 		if startup_time is not None:
 			try:
 				result = proc.wait(timeout = startup_time)
+
 				# Process died!
+				proc.stdin.close()
+				proc.stdout.close()
+				proc.stderr.close()
 				raise Exception("Process '%s' died with status %d before initialized after %.1f sec." % (self._format_cmdline(cmd), proc.returncode, startup_time))
 			except subprocess.TimeoutExpired:
 				# Process still alive after init timeout. All good!
@@ -116,47 +120,51 @@ class RatchedIntegrationTests(unittest.TestCase):
 	def _assert_not_connected(self, srv_proc, cli_proc):
 		self._assert_connection_state(srv_proc, cli_proc, False)
 
-	def _start_sserver(self, startup_time = 0.1):
+	def _start_sserver(self, servername = "bar", startup_time = 0.1):
 		cmd = [ "openssl", "s_server" ]
-		cmd += [ "-cert", self._test_ca_data_dir + "server_bar.crt"]
-		cmd += [ "-key", self._test_ca_data_dir + "server_bar.key" ]
+		cmd += [ "-cert", self._test_ca_data_dir + "server_%s.crt" % (servername) ]
+		cmd += [ "-key", self._test_ca_data_dir + "server_%s.key" % (servername) ]
 		cmd += [ "-cert_chain", self._test_ca_data_dir + "intermediate.crt" ]
 		cmd += [ "-accept", "10000" ]
 		srv = self._start_child(cmd, startup_time = startup_time)
 		return srv
 
-	def _start_sclient(self, verify = False, startup_time = None):
+	def _start_sclient(self, verify = False, include_trusted_ca = False, verify_hostname = None, startup_time = None):
 		cmd = [ "openssl", "s_client" ]
 		cmd += [ "-connect", "127.0.0.1:10000" ]
 		if verify:
 			cmd += [ "-verify", "3", "-verify_return_error" ]
+		if include_trusted_ca:
 			cmd += [ "-CAfile", self._test_ca_data_dir + "root.crt" ]
+		if verify_hostname is not None:
+			cmd += [ "-verify_hostname", verify_hostname ]
 		cli = self._start_child(cmd, startup_time = 0.1)
 		return cli
 
 	def test_server_works_noverify(self):
 		srv = self._start_sserver()
 		cli = self._start_sclient()
-
-		time.sleep(0.1)
-		(srv_stdout, srv_stderr) = self._procread(srv)
-		(cli_stdout, cli_stderr) = self._procread(cli)
+		(srv_stdout, srv_stderr) = self._procread(srv, timeout_secs = 0.1)
+		(cli_stdout, cli_stderr) = self._procread(cli, timeout_secs = 0.1)
 		self._assert_connected(srv, cli)
 
 	def test_server_doesnt_work_without_root_ca(self):
 		srv = self._start_sserver()
 		with self.assertRaises(Exception):
 			# Client cannot connect and process will terminate.
-			cli = self._start_sclient(verify = True, startup_time = 0.1)
+			cli = self._start_sclient(verify = True, include_trusted_ca = False, startup_time = 0.1)
+
+	def test_server_doesnt_work_with_wrong_hostname(self):
+		srv = self._start_sserver()
+		with self.assertRaises(Exception):
+			# Client cannot connect and process will terminate.
+			cli = self._start_sclient(verify = True, include_trusted_ca = True, verify_hostname = "xyz", startup_time = 0.1)
 
 	def test_server_works_wit_root_ca(self):
 		srv = self._start_sserver()
-		cli = self._start_sclient(verify = True)
-
-
-		time.sleep(0.1)
-		(srv_stdout, srv_stderr) = self._procread(srv)
-		(cli_stdout, cli_stderr) = self._procread(cli)
+		cli = self._start_sclient(verify = True, include_trusted_ca = True, verify_hostname = "bar")
+		(srv_stdout, srv_stderr) = self._procread(srv, timeout_secs = 0.1)
+		(cli_stdout, cli_stderr) = self._procread(cli, timeout_secs = 0.1)
 		self._assert_connected(srv, cli)
 
 
