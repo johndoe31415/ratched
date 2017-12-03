@@ -367,7 +367,6 @@ static bool append_custom_intercept_config(const char *connection_params) {
 	if (!entry) {
 		return false;
 	}
-	fprintf(stderr, "'%s'\n", entry->hostname);
 	if (strmap_has(pgm_options_rw.custom_configs, entry->hostname)) {
 		snprintf(parsing_error, sizeof(parsing_error), "hostname '%s' specified at least twice.", entry->hostname);
 		return false;
