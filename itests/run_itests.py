@@ -140,8 +140,10 @@ class RatchedIntegrationTests(unittest.TestCase):
 			cmd += [ "-CAfile", self._test_ratched_config_dir + "root.crt" ]
 		if servername is not None:
 			cmd += [ "-servername", servername ]
-			if verify_hostname:
+			if isinstance(verify_hostname, bool):
 				cmd += [ "-verify_hostname", servername ]
+			else:
+				cmd += [ "-verify_hostname", verify_hostname ]
 #		cmd += [ "-debug" ]
 		cli = self._start_child(cmd).assert_running(self._TIMEOUTS["wait_sclient_ready"])
 		cli.read_until_data_recvd(timeout_secs = 5.0, expect_data = b"---\n")
@@ -238,15 +240,22 @@ class RatchedIntegrationTests(unittest.TestCase):
 	@debug_on_error
 	def test_ratched_fails_without_trusted_root(self):
 		srv = self._start_sserver()
-		ratched = self._start_ratched(args = [  ])
+		ratched = self._start_ratched()
 		with self.assertRaises(SubprocessException):
 			cli = self._start_sclient(verify = True, port = 10001, servername = "somehost", verify_hostname = True)
 
 	@debug_on_error
 	def test_ratched_works_with_trusted_root(self):
 		srv = self._start_sserver()
-		ratched = self._start_ratched(args = [ "-vvv" ])
+		ratched = self._start_ratched()
 		cli = self._start_sclient(verify = True, include_ratched_ca = True, port = 10001, servername = "somehost", verify_hostname = True)
+		self._assert_tls_works(srv, cli)
+
+	@debug_on_error
+	def test_ratched_odd_hostname_cert(self):
+		srv = self._start_sserver()
+		ratched = self._start_ratched(args = [ "--intercept", "somehost,s_certfile=%sserver_foo.crt,s_keyfile=%sserver_foo.key,s_chainfile=%sintermediate.crt" % (self._test_ca_data_dir, self._test_ca_data_dir, self._test_ca_data_dir) ])
+		cli = self._start_sclient(verify = True, include_trusted_ca = True, port = 10001, servername = "somehost", verify_hostname = "foo")
 		self._assert_tls_works(srv, cli)
 
 if __name__ == "__main__":
