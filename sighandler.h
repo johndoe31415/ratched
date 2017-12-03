@@ -21,8 +21,8 @@
  *	Johannes Bauer <JohannesBauer@gmx.de>
 **/
 
-#ifndef __SHUTDOWN_H__
-#define __SHUTDOWN_H__
+#ifndef __SIGHANDLER_H__
+#define __SIGHANDLER_H__
 
 #include <stdbool.h>
 

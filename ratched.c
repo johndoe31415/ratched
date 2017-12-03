@@ -29,7 +29,7 @@
 #include "server.h"
 #include "openssl.h"
 #include "certforgery.h"
-#include "shutdown.h"
+#include "sighandler.h"
 #include "daemonize.h"
 #include "interceptdb.h"
 #include "hostname_ids.h"
@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
 	}
 
 	if (!init_signal_handlers()) {
-		logmsg(LLVL_FATAL, "Could not install shutdown handler.");
+		logmsg(LLVL_FATAL, "Could not install signal handlers.");
 		exit(EXIT_FAILURE);
 	}
 

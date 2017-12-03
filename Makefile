@@ -13,6 +13,7 @@ OBJS := \
 	keyvaluelist.o \
 	logging.o \
 	ocsp_response.o \
+	map.o \
 	openssl_certs.o \
 	openssl_clienthello.o \
 	openssl_fwd.o \
@@ -23,10 +24,9 @@ OBJS := \
 	pgmopts.o \
 	ratched.o \
 	server.o \
-	shutdown.o \
+	sighandler.o \
 	stringlist.o \
 	tcpip.o \
-	map.o \
 	thread.o \
 	tools.o
 

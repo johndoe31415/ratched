@@ -25,7 +25,7 @@
 #include <signal.h>
 #include <string.h>
 #include <errno.h>
-#include "shutdown.h"
+#include "sighandler.h"
 #include "logging.h"
 #include "server.h"
 
