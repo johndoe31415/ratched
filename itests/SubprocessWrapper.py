@@ -113,6 +113,7 @@ class SubprocessWrapper(object):
 		# And terminate child
 		self._proc.send_signal(signal.SIGTERM)
 		if not self.expect_process_terminated_after(timeout_before_sigkill_secs):
+			print("Sending SIGKILL")
 			self._proc.send_signal(signal.SIGKILL)
 			if not self.expect_process_terminated_after(1.0):
 				raise SubprocessException("Process %s did not terminate even after sending SIGKILL." % (self))

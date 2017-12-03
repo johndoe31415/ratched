@@ -130,10 +130,12 @@ class RatchedIntegrationTests(unittest.TestCase):
 	def _assert_tls_works(self, srv, cli):
 		return self._assert_connected(srv, cli)
 
-	def _assert_tls_interception_works(self, srv, cli, interception_pcapng_filename = "output.pcapng"):
+	def _assert_tls_interception_works(self, srv, cli, ratched, interception_pcapng_filename = "output.pcapng"):
 		(nonce1, nonce2) = self._assert_tls_works(srv, cli)
-		cli.close_stdin(wait_for_exit_secs = 0.1)
-		time.sleep(0.1)		# Wait for data to be flushed
+		cli.close_stdin(wait_for_exit_secs = 1.0)
+		srv.read_until_data_recvd(timeout_secs = 5.0, expect_data = b"ACCEPT\n")
+		ratched.shutdown(timeout_before_sigkill_secs = 5.0)
+		ratched.dump()
 		with open(interception_pcapng_filename, "rb") as f:
 			intercepted_data = f.read()
 		self.assertIn(nonce1, intercepted_data)
@@ -163,10 +165,9 @@ class RatchedIntegrationTests(unittest.TestCase):
 
 	def test_ratched_basic(self):
 		srv = self._start_sserver()
-		ratched = self._start_ratched()
+		ratched = self._start_ratched(args = [ "-vvv" ])
 		cli = self._start_sclient(port = 10001)
-		self._assert_tls_interception_works(srv, cli)
-#		ratched.shutdown(timeout_before_sigkill_secs = 1)
+		self._assert_tls_interception_works(srv, cli, ratched)
 
 #	def test_ratched_odd_hostname(self):
 #		srv = self._start_sserver()
