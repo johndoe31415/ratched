@@ -311,7 +311,11 @@ X509* openssl_create_certificate(const struct certificatespec_t *spec) {
 	}
 	success = success && add_extension_conf(cert, issuer_cert, NID_subject_key_identifier, "hash");
 	success = success && add_extension_conf(cert, issuer_cert, NID_authority_key_identifier, spec->full_authority_keyid ? "keyid,issuer:always" : "keyid");
-	success = success && add_extension_conf(cert, issuer_cert, NID_key_usage, "digitalSignature,keyEncipherment,keyAgreement");
+	if (spec->is_ca_certificate) {
+		success = success && add_extension_conf(cert, issuer_cert, NID_key_usage, "digitalSignature,keyCertSign,cRLSign");
+	} else {
+		success = success && add_extension_conf(cert, issuer_cert, NID_key_usage, "digitalSignature,keyEncipherment,keyAgreement");
+	}
 	if (spec->subject_alternative_dns_hostname && spec->subject_alternative_ipv4_address) {
 		/* IPv4 and hostname specified */
 		char configline[256];
