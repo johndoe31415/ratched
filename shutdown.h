@@ -27,7 +27,7 @@
 #include <stdbool.h>
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
-bool init_shutdown_handler(void);
+bool init_signal_handlers(void);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif

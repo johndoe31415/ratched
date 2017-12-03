@@ -36,23 +36,36 @@ static void sigint_handler(int signal) {
 	shutdown_requested = true;
 }
 
-bool init_shutdown_handler(void) {
-	struct sigaction action = {
-		.sa_handler = sigint_handler,
-		.sa_flags = SA_RESTART,
-	};
-	sigemptyset(&action.sa_mask);
-	if (sigaction(SIGINT, &action, NULL) != 0) {
-		logmsg(LLVL_ERROR, "sigaction failed to install SIGINT handler: %s", strerror(errno));
-		return false;
+bool init_signal_handlers(void) {
+	{
+		struct sigaction action = {
+			.sa_handler = sigint_handler,
+			.sa_flags = SA_RESTART,
+		};
+		sigemptyset(&action.sa_mask);
+		if (sigaction(SIGINT, &action, NULL) != 0) {
+			logmsg(LLVL_ERROR, "sigaction failed to install SIGINT handler: %s", strerror(errno));
+			return false;
+		}
+		if (sigaction(SIGHUP, &action, NULL) != 0) {
+			logmsg(LLVL_ERROR, "sigaction failed to install SIGHUP handler: %s", strerror(errno));
+			return false;
+		}
+		if (sigaction(SIGTERM, &action, NULL) != 0) {
+			logmsg(LLVL_ERROR, "sigaction failed to install SIGTERM handler: %s", strerror(errno));
+			return false;
+		}
 	}
-	if (sigaction(SIGHUP, &action, NULL) != 0) {
-		logmsg(LLVL_ERROR, "sigaction failed to install SIGHUP handler: %s", strerror(errno));
-		return false;
-	}
-	if (sigaction(SIGTERM, &action, NULL) != 0) {
-		logmsg(LLVL_ERROR, "sigaction failed to install SIGTERM handler: %s", strerror(errno));
-		return false;
+
+	{
+		struct sigaction action = {
+			.sa_handler = SIG_IGN,
+			.sa_flags = SA_RESTART,
+		};
+		if (sigaction(SIGPIPE, &action, NULL) != 0) {
+			logmsg(LLVL_ERROR, "sigaction failed to install SIGPIPE handler: %s", strerror(errno));
+			return false;
+		}
 	}
 	return true;
 }

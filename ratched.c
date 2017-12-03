@@ -47,7 +47,7 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	if (!init_shutdown_handler()) {
+	if (!init_signal_handlers()) {
 		logmsg(LLVL_FATAL, "Could not install shutdown handler.");
 		exit(EXIT_FAILURE);
 	}
