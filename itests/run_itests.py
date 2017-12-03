@@ -21,10 +21,23 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 
 import unittest
+import sys
 import time
 import string
 import random
+import functools
 from SubprocessWrapper import SubprocessWrapper, SubprocessException
+
+def debug_on_error(decoree):
+	@functools.wraps(decoree)
+	def decorator(self, *args, **kwargs):
+		try:
+			decoree(self, *args, **kwargs)
+			self._recent_test_case_failed = False
+		except:
+			self._recent_test_case_failed = True
+			raise
+	return decorator
 
 class RatchedIntegrationTests(unittest.TestCase):
 	_UNSCALED_TIMEOUTS = {
@@ -42,7 +55,9 @@ class RatchedIntegrationTests(unittest.TestCase):
 		unittest.TestCase.__init__(self, *args, **kwargs)
 		self._ratched_binary = "../ratched"
 		self._test_ca_data_dir = "demo_ca/"
+		self._test_ratched_config_dir = "ratched_ca/"
 		self._active_processes = [ ]
+		self._recent_test_case_failed = False
 
 	@staticmethod
 	def _format_cmdline(cmd):
@@ -56,16 +71,25 @@ class RatchedIntegrationTests(unittest.TestCase):
 		return " ".join(escape_arg(arg) for arg in cmd)
 
 	def _start_child(self, cmd, startup_time = None):
-		proc = SubprocessWrapper(cmd, startup_time_secs = startup_time, verbose = True)
+		proc = SubprocessWrapper(cmd)
+		if startup_time is not None:
+			proc.assert_running(startup_time)
 		self._active_processes.append(proc)
 		return proc
 
+	def setUp(self):
+		self._recent_test_case_failed = False
+
 	def tearDown(self):
-#		for proc in self._active_processes:
-#			proc.dump()
-#		for proc in self._active_processes:
-#			print(proc)
-#		print("~" * 120)
+		if self._recent_test_case_failed:
+			print("%d active processes after failed testcase" % (len(self._active_processes)))
+			for proc in self._active_processes:
+				proc.read(0)
+				proc.read_stderr(0)
+				proc.dump()
+			for proc in self._active_processes:
+				print(proc)
+			print("~" * 120)
 		for proc in self._active_processes:
 			proc.shutdown(timeout_before_sigkill_secs = self._TIMEOUTS["wait_after_sigterm"])
 		self._active_processes = [ ]
@@ -99,23 +123,27 @@ class RatchedIntegrationTests(unittest.TestCase):
 		cmd += [ "-cert_chain", self._test_ca_data_dir + "intermediate.crt" ]
 		cmd += [ "-accept", "10000" ]
 #		cmd += [ "-debug" ]
-		srv = self._start_child(cmd, startup_time = self._TIMEOUTS["wait_sserver_ready"])
+		srv = self._start_child(cmd).assert_running(self._TIMEOUTS["wait_sserver_ready"])
 		srv.read_until_data_recvd(timeout_secs = 5.0, expect_data = b"ACCEPT\n")
 		return srv
 
-	def _start_sclient(self, verify = False, include_trusted_ca = False, port = 10000, servername = None, verify_hostname = False, startup_time = None):
+	def _start_sclient(self, verify = False, include_trusted_ca = False, include_ratched_ca = False, port = 10000, servername = None, verify_hostname = False, startup_time = None):
 		cmd = [ "openssl", "s_client" ]
 		cmd += [ "-connect", "127.0.0.1:%d" % (port) ]
 		if verify:
 			cmd += [ "-verify", "3", "-verify_return_error" ]
+		if include_trusted_ca and include_ratched_ca:
+			raise Exception(NotImplemented)
 		if include_trusted_ca:
 			cmd += [ "-CAfile", self._test_ca_data_dir + "root.crt" ]
+		elif include_ratched_ca:
+			cmd += [ "-CAfile", self._test_ratched_config_dir + "root.crt" ]
 		if servername is not None:
 			cmd += [ "-servername", servername ]
 			if verify_hostname:
 				cmd += [ "-verify_hostname", servername ]
 #		cmd += [ "-debug" ]
-		cli = self._start_child(cmd, startup_time = self._TIMEOUTS["wait_sclient_ready"])
+		cli = self._start_child(cmd).assert_running(self._TIMEOUTS["wait_sclient_ready"])
 		cli.read_until_data_recvd(timeout_secs = 5.0, expect_data = b"---\n")
 		return cli
 
@@ -124,9 +152,10 @@ class RatchedIntegrationTests(unittest.TestCase):
 		cmd += [ "-l", "127.0.0.1:10001" ]
 		cmd += [ "-f", "127.0.0.1:10000" ]
 		cmd += [ "-o", "output.pcapng" ]
+		cmd += [ "--config-dir", self._test_ratched_config_dir ]
 		if args is not None:
 			cmd += args
-		ratched = self._start_child(cmd, startup_time = self._TIMEOUTS["wait_ratched_ready"])
+		ratched = self._start_child(cmd).assert_running(self._TIMEOUTS["wait_ratched_ready"])
 		return ratched
 
 	def _assert_tls_works(self, srv, cli):
@@ -142,56 +171,82 @@ class RatchedIntegrationTests(unittest.TestCase):
 		self.assertIn(nonce1, intercepted_data)
 		self.assertIn(nonce2, intercepted_data)
 
+	@debug_on_error
 	def test_server_works_noverify(self):
 		srv = self._start_sserver()
 		cli = self._start_sclient()
 		self._assert_tls_works(srv, cli)
 
+	@debug_on_error
 	def test_server_doesnt_work_without_root_ca(self):
 		srv = self._start_sserver()
 		with self.assertRaises(Exception):
 			# Client cannot connect and process will terminate.
 			cli = self._start_sclient(verify = True, include_trusted_ca = False)
 
+	@debug_on_error
 	def test_server_doesnt_work_with_wrong_hostname(self):
 		srv = self._start_sserver()
 		with self.assertRaises(Exception):
 			# Client cannot connect and process will terminate.
 			cli = self._start_sclient(verify = True, include_trusted_ca = True, servername = "xyz", verify_hostname = True)
 
+	@debug_on_error
 	def test_server_works_with_root_ca(self):
 		srv = self._start_sserver()
 		cli = self._start_sclient(verify = True, include_trusted_ca = True, servername = "bar", verify_hostname = True)
 		self._assert_tls_works(srv, cli)
 
+	@debug_on_error
 	def test_ratched_basic(self):
 		srv = self._start_sserver()
 		ratched = self._start_ratched()
 		cli = self._start_sclient(port = 10001)
 		self._assert_tls_interception_works(srv, cli, ratched)
 
+	@debug_on_error
 	def test_ratched_odd_hostname(self):
 		srv = self._start_sserver()
 		ratched = self._start_ratched()
 		cli = self._start_sclient(port = 10001, servername = "definitely.some.non.configured.hostname", verify_hostname = True)
 		self._assert_tls_interception_works(srv, cli, ratched)
 
+	@debug_on_error
 	def test_ratched_disabled_interception(self):
 		srv = self._start_sserver()
 		ratched = self._start_ratched(args = [ "--defaults", "intercept=forward" ])
 		cli = self._start_sclient(port = 10001, verify = True, include_trusted_ca = True, servername = "bar", verify_hostname = True)
 		self._assert_tls_works(srv, cli)
 
+	@debug_on_error
 	def test_ratched_disabled_interception_except_one(self):
 		srv = self._start_sserver()
 		ratched = self._start_ratched(args = [ "--defaults", "intercept=forward", "--intercept", "interceptionhost,intercept=mandatory" ])
 		cli = self._start_sclient(port = 10001, servername = "interceptionhost", verify_hostname = True)
 		self._assert_tls_works(srv, cli)
 
-	def test_ratched_specific_tls_config(self):
+	@debug_on_error
+	def test_ratched_specific_tls_server_config(self):
 		srv = self._start_sserver()
-		ratched = self._start_ratched(args = [ "--defaults", "ciphersuite=CHACHA20" ])
+		ratched = self._start_ratched(args = [ "--defaults", "s_ciphers=ECDHE-ECDSA-CHACHA20-POLY1305,s_groups=P-256,s_sigalgs=ECDSA+SHA512" ])
 		cli = self._start_sclient(port = 10001, servername = "somehost", verify_hostname = True)
+		self._assert_tls_works(srv, cli)
+		self.assertIn(b"Peer signing digest: SHA512", cli.stdout)
+		self.assertIn(b"Server Temp Key: ECDH", cli.stdout)
+		self.assertIn(b"Cipher    : ECDHE-ECDSA-CHACHA20-POLY1305", cli.stdout)
+
+	@debug_on_error
+	def test_ratched_fails_without_trusted_root(self):
+		srv = self._start_sserver()
+		ratched = self._start_ratched(args = [  ])
+		with self.assertRaises(SubprocessException):
+			cli = self._start_sclient(verify = True, port = 10001, servername = "somehost", verify_hostname = True)
+
+	@debug_on_error
+	def test_ratched_works_with_trusted_root(self):
+		srv = self._start_sserver()
+		ratched = self._start_ratched(args = [ "-vvv" ])
+		cli = self._start_sclient(verify = True, include_ratched_ca = True, port = 10001, servername = "somehost", verify_hostname = True)
 		self._assert_tls_works(srv, cli)
 
 if __name__ == "__main__":

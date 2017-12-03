@@ -30,7 +30,7 @@ import time
 class SubprocessException(Exception): pass
 
 class SubprocessWrapper(object):
-	def __init__(self, cmd, startup_time_secs = None, verbose = False):
+	def __init__(self, cmd, verbose = False):
 		self._stdout_data = bytearray()
 		self._stderr_data = bytearray()
 		self._cmd = cmd
@@ -41,12 +41,12 @@ class SubprocessWrapper(object):
 		self._stderr = self._proc.stderr
 		self._set_fd_nonblocking(self._stdout)
 		self._set_fd_nonblocking(self._stderr)
-		if startup_time_secs is not None:
-			if not self.expect_process_alive_after(startup_time_secs):
-				self.shutdown(0)
-				if verbose:
-					self.dump()
-				raise SubprocessException("Process %s did not start up properly: Died before %.1f secs were over." % (self, startup_time_secs))
+
+	def assert_running(self, startup_time_secs):
+		if not self.expect_process_alive_after(startup_time_secs):
+			self.shutdown(0)
+			raise SubprocessException("Process %s did not start up properly: Died before %.1f secs were over." % (self, startup_time_secs))
+		return self
 
 	@staticmethod
 	def _set_fd_nonblocking(f):
@@ -67,6 +67,14 @@ class SubprocessWrapper(object):
 	@property
 	def formatted_cmdline(self):
 		return self._format_cmdline(self._cmd)
+
+	@property
+	def stdout(self):
+		return self._stdout_data
+
+	@property
+	def stderr(self):
+		return self._stderr_data
 
 	@staticmethod
 	def _format_cmdline(cmd):
