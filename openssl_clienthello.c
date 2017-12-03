@@ -193,7 +193,7 @@ bool parse_client_hello(struct chello_t *result, const uint8_t *data, int length
 		.parse_result = result,
 	};
 
-	/* Activate clalbacks */
+	/* Register callbacks */
 	SSL_set_msg_callback(ssl, msg_cb);
 	SSL_set_msg_callback_arg(ssl, &cb_ctx);
 	SSL_set_tlsext_debug_callback(ssl, msg_tlsext);
