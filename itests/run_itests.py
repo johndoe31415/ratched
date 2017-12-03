@@ -21,24 +21,10 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 
 import unittest
-import subprocess
-import signal
 import time
-import fcntl
-import select
-import os
 import string
 import random
-
-def set_fd_nonblocking(f):
-	fd = f.fileno()
-	flags = fcntl.fcntl(fd, fcntl.F_GETFL, 0)
-	fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
-
-def read_if_have_data(f, maxlen = None, timeout_secs = 0.1):
-	(readable, writable, errored) = select.select([ f.fileno() ], [ ], [ ], timeout_secs)
-	if len(readable) > 0:
-		return f.read(maxlen)
+from SubprocessWrapper import SubprocessWrapper, SubprocessException
 
 class RatchedIntegrationTests(unittest.TestCase):
 	_UNSCALED_TIMEOUTS = {
@@ -52,7 +38,7 @@ class RatchedIntegrationTests(unittest.TestCase):
 		"wait_sserver_settle":			0.5,
 		"wait_after_sigterm":			0.5,
 	}
-	_TIMEOUTS = { key: 3.0 * value for (key, value) in _UNSCALED_TIMEOUTS.items() }
+	_TIMEOUTS = { key: 0.5 * value for (key, value) in _UNSCALED_TIMEOUTS.items() }
 
 
 	def __init__(self, *args, **kwargs):
@@ -73,50 +59,14 @@ class RatchedIntegrationTests(unittest.TestCase):
 		return " ".join(escape_arg(arg) for arg in cmd)
 
 	def _start_child(self, cmd, startup_time = None):
-#		print(self._format_cmdline(cmd))
-		proc = subprocess.Popen(cmd, stdout = subprocess.PIPE, stderr = subprocess.PIPE, stdin = subprocess.PIPE)
-		set_fd_nonblocking(proc.stdout)
-		set_fd_nonblocking(proc.stderr)
-		if startup_time is not None:
-			try:
-				result = proc.wait(timeout = startup_time)
-
-				# Process died!
-				proc.stdin.close()
-				proc.stdout.close()
-				proc.stderr.close()
-				raise Exception("Process '%s' died with status %d before initialized after %.1f sec." % (self._format_cmdline(cmd), proc.returncode, startup_time))
-			except subprocess.TimeoutExpired:
-				# Process still alive after init timeout. All good!
-				pass
-
-		self._active_processes.append([ cmd, proc ])
+		proc = SubprocessWrapper(cmd, startup_time_secs = startup_time)
+		self._active_processes.append(proc)
 		return proc
 
 	def tearDown(self):
-		for (cmd, proc) in self._active_processes:
-#			print(self._format_cmdline(cmd))
-#			print(proc.stdout.read())
-#			print(proc.stderr.read())
-#			print()
-			proc.stdout.close()
-			proc.stderr.close()
-			proc.stdin.close()
-			proc.send_signal(signal.SIGTERM)
-		for (cmd, proc) in self._active_processes:
-			try:
-				proc.wait(timeout = self._TIMEOUTS["wait_after_sigterm"])
-			except subprocess.TimeoutExpired:
-				# SIGTERM doesn't work. Alright, the hard way.
-				proc.send_signal(signal.SIGKILL)
-				proc.wait(timeout = 0.1)
+		for proc in self._active_processes:
+			proc.shutdown(timeout_before_sigkill_secs = self._TIMEOUTS["wait_after_sigterm"])
 		self._active_processes = [ ]
-
-	@staticmethod
-	def _procread(proc, timeout_secs = 0):
-		stdout = read_if_have_data(proc.stdout, timeout_secs = timeout_secs)
-		stderr = read_if_have_data(proc.stderr, timeout_secs = timeout_secs)
-		return (stdout, stderr)
 
 	@staticmethod
 	def _get_binnonce(length = 32):
@@ -126,16 +76,16 @@ class RatchedIntegrationTests(unittest.TestCase):
 
 	def _assert_connection_state(self, srv_proc, cli_proc, state):
 		nonce1 = self._get_binnonce()
-		srv_proc.stdin.write(nonce1)
-		srv_proc.stdin.flush()
-		(cli_stdout, cli_stderr) = self._procread(cli_proc, timeout_secs = self._TIMEOUTS["srv_to_cli_msg"])
-		self.assertTrue((nonce1 in cli_stdout) == state)
+		srv_proc.write(nonce1)
+		cli_stdout = cli_proc.read(timeout_secs = self._TIMEOUTS["srv_to_cli_msg"], read_until_timeout = True)
+		self.assertIsNotNone(cli_stdout)
+		self.assertIn(nonce1, cli_stdout)
 
 		nonce2 = self._get_binnonce()
-		cli_proc.stdin.write(nonce2)
-		cli_proc.stdin.flush()
-		(srv_stdout, srv_stderr) = self._procread(srv_proc, timeout_secs = self._TIMEOUTS["cli_to_srv_msg"])
-		self.assertTrue((nonce2 in srv_stdout) == state)
+		cli_proc.write(nonce2)
+		srv_stdout = srv_proc.read(timeout_secs = self._TIMEOUTS["cli_to_srv_msg"], read_until_timeout = True)
+		self.assertIsNotNone(srv_stdout)
+		self.assertIn(nonce2, srv_stdout)
 		return (nonce1, nonce2)
 
 	def _assert_connected(self, srv_proc, cli_proc):
@@ -179,14 +129,13 @@ class RatchedIntegrationTests(unittest.TestCase):
 		return ratched
 
 	def _assert_tls_works(self, srv, cli):
-		(srv_stdout, srv_stderr) = self._procread(srv, timeout_secs = self._TIMEOUTS["wait_sserver_startup_msgs"])
-		(cli_stdout, cli_stderr) = self._procread(cli, timeout_secs = self._TIMEOUTS["wait_sclient_startup_msgs"])
+#		(srv_stdout, srv_stderr) = self._procread(srv, timeout_secs = self._TIMEOUTS["wait_sserver_startup_msgs"])
+#		(cli_stdout, cli_stderr) = self._procread(cli, timeout_secs = self._TIMEOUTS["wait_sclient_startup_msgs"])
 		return self._assert_connected(srv, cli)
 
 	def _assert_tls_interception_works(self, srv, cli, interception_pcapng_filename = "output.pcapng"):
 		(nonce1, nonce2) = self._assert_tls_works(srv, cli)
-		cli.stdin.close()
-		time.sleep(0.1)
+		cli.close_stdin(wait_for_exit_secs = 0.1)
 		with open(interception_pcapng_filename, "rb") as f:
 			intercepted_data = f.read()
 		self.assertTrue(nonce1 in intercepted_data)
