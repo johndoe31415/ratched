@@ -56,7 +56,7 @@ class RatchedIntegrationTests(unittest.TestCase):
 		return " ".join(escape_arg(arg) for arg in cmd)
 
 	def _start_child(self, cmd, startup_time = None):
-		proc = SubprocessWrapper(cmd, startup_time_secs = startup_time)
+		proc = SubprocessWrapper(cmd, startup_time_secs = startup_time, verbose = True)
 		self._active_processes.append(proc)
 		return proc
 
@@ -166,15 +166,33 @@ class RatchedIntegrationTests(unittest.TestCase):
 
 	def test_ratched_basic(self):
 		srv = self._start_sserver()
-		ratched = self._start_ratched(args = [ "-vvv" ])
+		ratched = self._start_ratched()
 		cli = self._start_sclient(port = 10001)
 		self._assert_tls_interception_works(srv, cli, ratched)
 
-#	def test_ratched_odd_hostname(self):
-#		srv = self._start_sserver()
-#		ratched = self._start_ratched()
-#		cli = self._start_sclient(port = 10001, servername = "fudisohiuf", verify_hostname = True)
-#		self._assert_tls_interception_works(srv, cli)
+	def test_ratched_odd_hostname(self):
+		srv = self._start_sserver()
+		ratched = self._start_ratched()
+		cli = self._start_sclient(port = 10001, servername = "definitely.some.non.configured.hostname", verify_hostname = True)
+		self._assert_tls_interception_works(srv, cli, ratched)
+
+	def test_ratched_disabled_interception(self):
+		srv = self._start_sserver()
+		ratched = self._start_ratched(args = [ "--defaults", "intercept=forward" ])
+		cli = self._start_sclient(port = 10001, verify = True, include_trusted_ca = True, servername = "bar", verify_hostname = True)
+		self._assert_tls_works(srv, cli)
+
+	def test_ratched_disabled_interception_except_one(self):
+		srv = self._start_sserver()
+		ratched = self._start_ratched(args = [ "--defaults", "intercept=forward", "--intercept", "interceptionhost,intercept=mandatory" ])
+		cli = self._start_sclient(port = 10001, servername = "interceptionhost", verify_hostname = True)
+		self._assert_tls_works(srv, cli)
+
+	def test_ratched_specific_tls_config(self):
+		srv = self._start_sserver()
+		ratched = self._start_ratched(args = [ "--defaults", "ciphersuite=CHACHA20" ])
+		cli = self._start_sclient(port = 10001, servername = "somehost", verify_hostname = True)
+		self._assert_tls_works(srv, cli)
 
 if __name__ == "__main__":
 	unittest.main()
