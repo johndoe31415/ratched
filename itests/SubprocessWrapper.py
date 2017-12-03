@@ -25,6 +25,7 @@ import fcntl
 import signal
 import subprocess
 import select
+import time
 
 class SubprocessException(Exception): pass
 
@@ -35,8 +36,11 @@ class SubprocessWrapper(object):
 		self._cmd = cmd
 		self._wait_result = None
 		self._proc = subprocess.Popen(cmd, stdin = subprocess.PIPE, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
-		self._set_fd_nonblocking(self._proc.stdout)
-		self._set_fd_nonblocking(self._proc.stderr)
+		self._stdin = self._proc.stdin.raw
+		self._stdout = self._proc.stdout.raw
+		self._stderr = self._proc.stderr.raw
+		self._set_fd_nonblocking(self._stdout)
+		self._set_fd_nonblocking(self._stderr)
 		if startup_time_secs is not None:
 			if not self.expect_process_alive_after(startup_time_secs):
 				self.shutdown(0)
@@ -50,11 +54,11 @@ class SubprocessWrapper(object):
 		flags = fcntl.fcntl(fd, fcntl.F_GETFL, 0)
 		fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
 
-	@staticmethod
-	def _read_if_have_data(f, maxlen = None, timeout_secs = 0.1):
+	def _read_if_have_data(self, f, maxlen = None, timeout_secs = 0.1):
 		(readable, writable, errored) = select.select([ f.fileno() ], [ ], [ ], timeout_secs)
 		if len(readable) > 0:
-			return f.read(maxlen)
+			data = f.read(maxlen)
+			return data
 
 	@property
 	def proc(self):
@@ -96,9 +100,15 @@ class SubprocessWrapper(object):
 		self.read_stderr(0)
 
 		# Then close all FDs
-		self._proc.stdout.close()
-		self._proc.stderr.close()
-		self._proc.stdin.close()
+		if self._stdin is not None:
+			self._stdin.close()
+			self._stdin = None
+		if self._stdout is not None:
+			self._stdout.close()
+			self._stdout = None
+		if self._stderr is not None:
+			self._stderr.close()
+			self._stderr = None
 
 		# And terminate child
 		self._proc.send_signal(signal.SIGTERM)
@@ -108,35 +118,51 @@ class SubprocessWrapper(object):
 				raise SubprocessException("Process %s did not terminate even after sending SIGKILL." % (self))
 
 	def close_stdin(self, wait_for_exit_secs = None):
-		self._proc.stdin.close()
+		if self._stdin is not None:
+			self._stdin.close()
+			self._stdin = None
 		if wait_for_exit_secs is not None:
 			return self.wait(timeout_secs = wait_for_exit_secs)
 
 	def write(self, data):
-		self._proc.stdin.write(data)
-		self._proc.stdin.flush()
+		if self._stdin is not None:
+			self._stdin.write(data)
+			self._stdin.flush()
 
-	def _read_from(self, f, data_buf, timeout_secs, read_until_timeout):
-		read_data = None
+	def _read_from(self, f, timeout_secs, read_until_condition):
+		read_data = bytearray()
+		if f is None:
+			return read_data
+
+		timeout_t = time.time() + timeout_secs
 		while True:
-			data = self._read_if_have_data(f, timeout_secs = timeout_secs)
-			if data is None:
+			remaining_timeout = timeout_t - time.time()
+			if remaining_timeout <= 0:
 				break
-			else:
-				if read_data is None:
-					read_data = bytearray()
-				read_data += data
-				if not read_until_timeout:
-					break
-		if read_data is not None:
-			data_buf += read_data
+			chunk = self._read_if_have_data(f, timeout_secs = remaining_timeout)
+			if (chunk is None) or (len(chunk) == 0):
+				break
+			read_data += chunk
+			if read_until_condition(read_data):
+				break
 		return read_data
 
-	def read(self, timeout_secs, read_until_timeout = False):
-		return self._read_from(self._proc.stdout, self._stdout_data, timeout_secs = timeout_secs, read_until_timeout = read_until_timeout)
+	def read_until_data_recvd(self, timeout_secs, expect_data):
+		def condition(read_data):
+			return expect_data in read_data
+		data = self._read_from(self._stdout, timeout_secs = timeout_secs, read_until_condition = condition)
+		self._stdout_data += data
+		return data
 
-	def read_stderr(self, timeout_secs, read_until_timeout = False):
-		return self._read_from(self._proc.stderr, self._stderr_data, timeout_secs = timeout_secs, read_until_timeout = read_until_timeout)
+	def read(self, timeout_secs):
+		data = self._read_from(self._stdout, timeout_secs = timeout_secs, read_until_condition = lambda read_data: len(read_data) > 0)
+		self._stdout_data += data
+		return data
+
+	def read_stderr(self, timeout_secs):
+		data = self._read_from(self._stderr, timeout_secs = timeout_secs, read_until_condition = lambda read_data: len(read_data) > 0)
+		self._stderr_data += data
+		return data
 
 	def dump(self):
 		print("Dumping process %s" % (self))

@@ -28,18 +28,15 @@ from SubprocessWrapper import SubprocessWrapper, SubprocessException
 
 class RatchedIntegrationTests(unittest.TestCase):
 	_UNSCALED_TIMEOUTS = {
-		"wait_sserver_ready":			0.1,
-		"wait_sclient_ready":			0.1,
-		"wait_sserver_startup_msgs":	0.25,
-		"wait_sclient_startup_msgs":	0.25,
-		"wait_ratched_ready":			0.1,
-		"srv_to_cli_msg":				0.1,
-		"cli_to_srv_msg":				0.1,
+		"wait_sserver_ready":			0.2,
+		"wait_sclient_ready":			0.2,
+		"wait_ratched_ready":			0.2,
+		"srv_to_cli_msg":				0.2,
+		"cli_to_srv_msg":				0.2,
 		"wait_sserver_settle":			0.5,
 		"wait_after_sigterm":			0.5,
 	}
-	_TIMEOUTS = { key: 0.5 * value for (key, value) in _UNSCALED_TIMEOUTS.items() }
-
+	_TIMEOUTS = { key: value for (key, value) in _UNSCALED_TIMEOUTS.items() }
 
 	def __init__(self, *args, **kwargs):
 		unittest.TestCase.__init__(self, *args, **kwargs)
@@ -65,7 +62,9 @@ class RatchedIntegrationTests(unittest.TestCase):
 
 	def tearDown(self):
 		for proc in self._active_processes:
+#			proc.dump()
 			proc.shutdown(timeout_before_sigkill_secs = self._TIMEOUTS["wait_after_sigterm"])
+#		print("~" * 120)
 		self._active_processes = [ ]
 
 	@staticmethod
@@ -76,16 +75,14 @@ class RatchedIntegrationTests(unittest.TestCase):
 
 	def _assert_connection_state(self, srv_proc, cli_proc, state):
 		nonce1 = self._get_binnonce()
+#		time.sleep(0.5)
 		srv_proc.write(nonce1)
-		cli_stdout = cli_proc.read(timeout_secs = self._TIMEOUTS["srv_to_cli_msg"], read_until_timeout = True)
-		self.assertIsNotNone(cli_stdout)
-		self.assertIn(nonce1, cli_stdout)
+		self.assertIn(nonce1, cli_proc.read_until_data_recvd(timeout_secs = 5.0, expect_data = nonce1))
 
 		nonce2 = self._get_binnonce()
+#		time.sleep(0.5)
 		cli_proc.write(nonce2)
-		srv_stdout = srv_proc.read(timeout_secs = self._TIMEOUTS["cli_to_srv_msg"], read_until_timeout = True)
-		self.assertIsNotNone(srv_stdout)
-		self.assertIn(nonce2, srv_stdout)
+		self.assertIn(nonce2, srv_proc.read_until_data_recvd(timeout_secs = 5.0, expect_data = nonce2))
 		return (nonce1, nonce2)
 
 	def _assert_connected(self, srv_proc, cli_proc):
@@ -101,7 +98,8 @@ class RatchedIntegrationTests(unittest.TestCase):
 		cmd += [ "-cert_chain", self._test_ca_data_dir + "intermediate.crt" ]
 		cmd += [ "-accept", "10000" ]
 		srv = self._start_child(cmd, startup_time = self._TIMEOUTS["wait_sserver_ready"])
-		time.sleep(self._TIMEOUTS["wait_sserver_settle"])
+		#time.sleep(self._TIMEOUTS["wait_sserver_settle"])
+		srv.read_until_data_recvd(timeout_secs = 5.0, expect_data = b"ACCEPT\n")
 		return srv
 
 	def _start_sclient(self, verify = False, include_trusted_ca = False, port = 10000, servername = None, verify_hostname = False, startup_time = None):
@@ -116,6 +114,7 @@ class RatchedIntegrationTests(unittest.TestCase):
 			if verify_hostname:
 				cmd += [ "-verify_hostname", servername ]
 		cli = self._start_child(cmd, startup_time = self._TIMEOUTS["wait_sclient_ready"])
+		cli.read_until_data_recvd(timeout_secs = 5.0, expect_data = b"---\n")
 		return cli
 
 	def _start_ratched(self, args = None):
@@ -129,17 +128,16 @@ class RatchedIntegrationTests(unittest.TestCase):
 		return ratched
 
 	def _assert_tls_works(self, srv, cli):
-#		(srv_stdout, srv_stderr) = self._procread(srv, timeout_secs = self._TIMEOUTS["wait_sserver_startup_msgs"])
-#		(cli_stdout, cli_stderr) = self._procread(cli, timeout_secs = self._TIMEOUTS["wait_sclient_startup_msgs"])
 		return self._assert_connected(srv, cli)
 
 	def _assert_tls_interception_works(self, srv, cli, interception_pcapng_filename = "output.pcapng"):
 		(nonce1, nonce2) = self._assert_tls_works(srv, cli)
 		cli.close_stdin(wait_for_exit_secs = 0.1)
+		time.sleep(0.1)		# Wait for data to be flushed
 		with open(interception_pcapng_filename, "rb") as f:
 			intercepted_data = f.read()
-		self.assertTrue(nonce1 in intercepted_data)
-		self.assertTrue(nonce2 in intercepted_data)
+		self.assertIn(nonce1, intercepted_data)
+		self.assertIn(nonce2, intercepted_data)
 
 	def test_server_works_noverify(self):
 		srv = self._start_sserver()
@@ -168,6 +166,7 @@ class RatchedIntegrationTests(unittest.TestCase):
 		ratched = self._start_ratched()
 		cli = self._start_sclient(port = 10001)
 		self._assert_tls_interception_works(srv, cli)
+#		ratched.shutdown(timeout_before_sigkill_secs = 1)
 
 #	def test_ratched_odd_hostname(self):
 #		srv = self._start_sserver()
