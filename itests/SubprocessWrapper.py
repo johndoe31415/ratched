@@ -138,11 +138,13 @@ class SubprocessWrapper(object):
 			return read_data
 
 		timeout_t = time.time() + timeout_secs
+		first = True
 		while True:
 			remaining_timeout = timeout_t - time.time()
-			if remaining_timeout <= 0:
+			if (remaining_timeout <= 0) and (not first):
 				break
-			chunk = self._read_if_have_data(f, timeout_secs = remaining_timeout)
+			first = False
+			chunk = self._read_if_have_data(f, timeout_secs = max(0, remaining_timeout))
 			if (chunk is None) or (len(chunk) == 0):
 				break
 			read_data += chunk
