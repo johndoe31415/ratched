@@ -35,10 +35,10 @@ class SubprocessWrapper(object):
 		self._stderr_data = bytearray()
 		self._cmd = cmd
 		self._wait_result = None
-		self._proc = subprocess.Popen(cmd, stdin = subprocess.PIPE, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
-		self._stdin = self._proc.stdin.raw
-		self._stdout = self._proc.stdout.raw
-		self._stderr = self._proc.stderr.raw
+		self._proc = subprocess.Popen(cmd, stdin = subprocess.PIPE, stdout = subprocess.PIPE, stderr = subprocess.PIPE, bufsize = 0)
+		self._stdin = self._proc.stdin
+		self._stdout = self._proc.stdout
+		self._stderr = self._proc.stderr
 		self._set_fd_nonblocking(self._stdout)
 		self._set_fd_nonblocking(self._stderr)
 		if startup_time_secs is not None:
@@ -129,6 +129,8 @@ class SubprocessWrapper(object):
 		if self._stdin is not None:
 			self._stdin.write(data)
 			self._stdin.flush()
+		else:
+			print("ERROR: Cannot write with stdin closed: %s" % (str(data)))
 
 	def _read_from(self, f, timeout_secs, read_until_condition):
 		read_data = bytearray()

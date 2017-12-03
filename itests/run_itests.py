@@ -61,26 +61,27 @@ class RatchedIntegrationTests(unittest.TestCase):
 		return proc
 
 	def tearDown(self):
-		for proc in self._active_processes:
+#		for proc in self._active_processes:
 #			proc.dump()
-			proc.shutdown(timeout_before_sigkill_secs = self._TIMEOUTS["wait_after_sigterm"])
+#		for proc in self._active_processes:
+#			print(proc)
 #		print("~" * 120)
+		for proc in self._active_processes:
+			proc.shutdown(timeout_before_sigkill_secs = self._TIMEOUTS["wait_after_sigterm"])
 		self._active_processes = [ ]
 
 	@staticmethod
 	def _get_binnonce(length = 32):
-		nonce = [ random.choice(string.ascii_lowercase) for i in range(64) ]
+		nonce = [ "+" ] + [ random.choice(string.ascii_lowercase) for i in range(64) ]
 		nonce.append("\n")
 		return ("".join(nonce)).encode("ascii")
 
 	def _assert_connection_state(self, srv_proc, cli_proc, state):
 		nonce1 = self._get_binnonce()
-#		time.sleep(0.5)
 		srv_proc.write(nonce1)
 		self.assertIn(nonce1, cli_proc.read_until_data_recvd(timeout_secs = 5.0, expect_data = nonce1))
 
 		nonce2 = self._get_binnonce()
-#		time.sleep(0.5)
 		cli_proc.write(nonce2)
 		self.assertIn(nonce2, srv_proc.read_until_data_recvd(timeout_secs = 5.0, expect_data = nonce2))
 		return (nonce1, nonce2)
@@ -97,8 +98,8 @@ class RatchedIntegrationTests(unittest.TestCase):
 		cmd += [ "-key", self._test_ca_data_dir + "server_%s.key" % (servername) ]
 		cmd += [ "-cert_chain", self._test_ca_data_dir + "intermediate.crt" ]
 		cmd += [ "-accept", "10000" ]
+#		cmd += [ "-debug" ]
 		srv = self._start_child(cmd, startup_time = self._TIMEOUTS["wait_sserver_ready"])
-		#time.sleep(self._TIMEOUTS["wait_sserver_settle"])
 		srv.read_until_data_recvd(timeout_secs = 5.0, expect_data = b"ACCEPT\n")
 		return srv
 
@@ -113,6 +114,7 @@ class RatchedIntegrationTests(unittest.TestCase):
 			cmd += [ "-servername", servername ]
 			if verify_hostname:
 				cmd += [ "-verify_hostname", servername ]
+#		cmd += [ "-debug" ]
 		cli = self._start_child(cmd, startup_time = self._TIMEOUTS["wait_sclient_ready"])
 		cli.read_until_data_recvd(timeout_secs = 5.0, expect_data = b"---\n")
 		return cli
@@ -135,7 +137,6 @@ class RatchedIntegrationTests(unittest.TestCase):
 		cli.close_stdin(wait_for_exit_secs = 1.0)
 		srv.read_until_data_recvd(timeout_secs = 5.0, expect_data = b"ACCEPT\n")
 		ratched.shutdown(timeout_before_sigkill_secs = 5.0)
-		ratched.dump()
 		with open(interception_pcapng_filename, "rb") as f:
 			intercepted_data = f.read()
 		self.assertIn(nonce1, intercepted_data)
