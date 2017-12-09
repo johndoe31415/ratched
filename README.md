@@ -158,6 +158,11 @@ The arguments which are valid for the --intercept argument are as follows:
                         simply forwards everything unmodified. 'reject'
                         closes the connection altogether, regardless of the
                         type of seen traffic.
+  s_tlsversions=versions
+                        Colon-separated string that specifies the acceptable
+                        TLS version for the ratched server component. Valid
+                        elements are ssl2, ssl3, tls10, tls11, tls12, tls13.
+                        Defaults to tls10:tls11:tls12.
   s_reqclientcert=bool  Ask all connecting clients to the server side of the
                         TLS proxy for a client certificate. If not
                         replacement certificate (at least certfile and
@@ -184,6 +189,11 @@ The arguments which are valid for the --intercept argument are as follows:
                         server uses.
   s_sigalgs=algs        The key agreement 'signature algorithms' string which
                         the ratched TLS server uses.
+  c_tlsversions=versions
+                        Colon-separated string that specifies the acceptable
+                        TLS version for the ratched client component. Valid
+                        elements are ssl2, ssl3, tls10, tls11, tls12, tls13.
+                        Defaults to tls10:tls11:tls12.
   c_certfile=filename   Specifies an X.509 certificate in PEM format that
                         should be used by ratched as a client certificate. It
                         will only be used when the connecting client also

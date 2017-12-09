@@ -28,15 +28,27 @@
 #include <stdbool.h>
 
 enum interception_mode_t {
+	INTERCEPTION_MODE_UNDEFINED = 0,
 	OPPORTUNISTIC_TLS_INTERCEPTION,
 	MANDATORY_TLS_INTERCEPTION,
 	TRAFFIC_FORWARDING,
 	REJECT_CONNECTION,
 };
 
+enum tls_version_t {
+	TLS_VERSION_UNDEFINED = 0,
+	TLS_VERSION_SSL2 = (1 << 0),
+	TLS_VERSION_SSL3 = (1 << 1),
+	TLS_VERSION_TLS10 = (1 << 2),
+	TLS_VERSION_TLS11 = (1 << 3),
+	TLS_VERSION_TLS12 = (1 << 4),
+	TLS_VERSION_TLS13 = (1 << 5),
+};
+
 struct intercept_side_config_t {
 	// Makes only sense for 'server', but easier this way.
 	bool request_client_cert;
+	uint32_t tls_versions;
 
 	char *cert_filename;
 	char *key_filename;

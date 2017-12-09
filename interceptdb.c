@@ -43,9 +43,10 @@ struct intercept_entry_t* interceptdb_find_entry(const char *hostname, uint32_t 
 	}
 }
 
-static bool initialize_default_intercept_entry(struct intercept_entry_t *new_entry) {
+static void initialize_default_intercept_entry(struct intercept_entry_t *new_entry) {
 	new_entry->interception_mode = OPPORTUNISTIC_TLS_INTERCEPTION;
-	return true;
+	new_entry->server_template.tls_versions = TLS_VERSION_TLS10 | TLS_VERSION_TLS11 | TLS_VERSION_TLS12 | TLS_VERSION_TLS13;
+	new_entry->client_template.tls_versions = TLS_VERSION_TLS10 | TLS_VERSION_TLS11 | TLS_VERSION_TLS12 | TLS_VERSION_TLS13;
 }
 
 static bool init_tls_intercept_entry(struct tls_endpoint_config_t *config, const struct intercept_side_config_t *side_config, const char *description) {
@@ -69,6 +70,9 @@ static bool init_tls_intercept_entry(struct tls_endpoint_config_t *config, const
 		EVP_PKEY_up_ref(config->ocsp_responder.key);
 	}
 	config->request_cert_from_peer = side_config->request_client_cert;
+	if (side_config->tls_versions != TLS_VERSION_UNDEFINED) {
+		config->tls_versions = side_config->tls_versions;
+	}
 	config->ciphersuites = side_config->ciphersuites;
 	config->supported_groups = side_config->supported_groups;
 	config->signature_algorithms = side_config->signature_algorithms;
@@ -77,10 +81,11 @@ static bool init_tls_intercept_entry(struct tls_endpoint_config_t *config, const
 
 static bool initialize_intercept_entry_from_pgm_config(struct intercept_entry_t *new_entry, const struct intercept_config_t *pgm_config) {
 	memset(new_entry, 0, sizeof(struct intercept_entry_t));
-	if (!pgm_config) {
-		initialize_default_intercept_entry(new_entry);
-	} else {
-		new_entry->interception_mode = pgm_config->interception_mode;
+	initialize_default_intercept_entry(new_entry);
+	if (pgm_config) {
+		if (pgm_config->interception_mode != INTERCEPTION_MODE_UNDEFINED) {
+			new_entry->interception_mode = pgm_config->interception_mode;
+		}
 		new_entry->hostname = pgm_config->hostname;
 		new_entry->ipv4_nbo = pgm_config->ipv4_nbo;
 

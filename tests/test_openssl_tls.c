@@ -29,6 +29,7 @@
 #include <arpa/inet.h>
 #include <openssl.h>
 #include <openssl_tls.h>
+#include <intercept_config.h>
 #include <atomic.h>
 #include <thread.h>
 
@@ -61,7 +62,9 @@ static void tls_client_thread(void *arg) {
 static void tls_server_thread(void *arg) {
 	struct test_ctx_t *ctx = (struct test_ctx_t*)arg;
 
-	struct tls_endpoint_config_t config = { 0 };
+	struct tls_endpoint_config_t config = {
+		.tls_versions = TLS_VERSION_TLS12,
+	};
 	struct tls_endpoint_cert_source_t certsrc = {
 		.cert_filename = "local.crt",
 		.key_filename = "local.key",

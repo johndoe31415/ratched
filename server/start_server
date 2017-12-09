@@ -1,4 +1,4 @@
 #!/bin/bash
 #
 #
-openssl s_server -cert server_foo.crt -key server_foo.key -accept 5000 -msg -verify 2
+openssl s_server -cert server_foo.crt -key server_foo.key -accept 9000 -msg -verify 2

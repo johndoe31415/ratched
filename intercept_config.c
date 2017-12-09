@@ -34,6 +34,7 @@
 
 const char *interception_mode_to_str(enum interception_mode_t value) {
 	switch (value) {
+		case INTERCEPTION_MODE_UNDEFINED: return "INTERCEPTION_MODE_UNDEFINED";
 		case OPPORTUNISTIC_TLS_INTERCEPTION: return "OPPORTUNISTIC_TLS_INTERCEPTION";
 		case MANDATORY_TLS_INTERCEPTION: return "MANDATORY_TLS_INTERCEPTION";
 		case TRAFFIC_FORWARDING: return "TRAFFIC_FORWARDING";
@@ -75,8 +76,18 @@ struct intercept_config_t* intercept_config_new(const char *connection_params, b
 		{ "none",			REJECT_CONNECTION },
 		{ 0 }
 	};
+	const struct lookup_entry_t tls_version_flags[] = {
+		{ "ssl2",			TLS_VERSION_SSL2 },
+		{ "ssl3",			TLS_VERSION_SSL3 },
+		{ "tls10",			TLS_VERSION_TLS10 },
+		{ "tls11",			TLS_VERSION_TLS11 },
+		{ "tls12",			TLS_VERSION_TLS12 },
+		{ "tls13",			TLS_VERSION_TLS13 },
+		{ 0 }
+	};
 	struct keyvaluelist_def_t definition[] = {
 		{ .key = "intercept", .parser = keyvalue_lookup, .target = &config->interception_mode, .argument = (void*)&intercept_options },
+		{ .key = "s_tlsversions", .parser = keyvalue_flags, .target = &config->server.tls_versions, .argument = (void*)&tls_version_flags },
 		{ .key = "s_reqclientcert", .parser = keyvalue_bool, .target = &config->server.request_client_cert },
 		{ .key = "s_certfile", .parser = keyvalue_string, .target = &config->server.cert_filename },
 		{ .key = "s_keyfile", .parser = keyvalue_string, .target = &config->server.key_filename },
@@ -86,6 +97,7 @@ struct intercept_config_t* intercept_config_new(const char *connection_params, b
 		{ .key = "s_ciphers", .parser = keyvalue_string, .target = &config->server.ciphersuites },
 		{ .key = "s_groups", .parser = keyvalue_string, .target = &config->server.supported_groups },
 		{ .key = "s_sigalgs", .parser = keyvalue_string, .target = &config->server.signature_algorithms },
+		{ .key = "c_tlsversions", .parser = keyvalue_flags, .target = &config->client.tls_versions, .argument = (void*)&tls_version_flags },
 		{ .key = "c_certfile", .parser = keyvalue_string, .target = &config->client.cert_filename },
 		{ .key = "c_keyfile", .parser = keyvalue_string, .target = &config->client.key_filename },
 		{ .key = "c_chainfile", .parser = keyvalue_string, .target = &config->client.chain_filename },

@@ -63,6 +63,16 @@ bool keyvalue_bool(char *element, void *argument, void *vresult) {
 	return false;
 }
 
+static const struct lookup_entry_t* table_lookup(const struct lookup_entry_t *table, const char *key) {
+	while (table->key) {
+		if (!strcmp(table->key, key)) {
+			return table;
+		}
+		table++;
+	}
+	return NULL;
+}
+
 bool keyvalue_lookup(char *element, void *argument, void *vresult) {
 	const struct lookup_entry_t *table = (const struct lookup_entry_t *)argument;
 	int *result = (int*)vresult;
@@ -70,21 +80,41 @@ bool keyvalue_lookup(char *element, void *argument, void *vresult) {
 		logmsg(LLVL_FATAL, "Programming error: keyvalue_lookup() requested, but no lookup table specified.");
 		return false;
 	}
-	/* TODO: -Wuninitialized didn't find the bug when success wasn't initialized -- why?! */
-	//bool success;
-	bool success = false;
-	while (table->key) {
-		if (!strcmp(table->key, element)) {
-			/* Match! */
-			*result = table->value;
-			success = true;
-			break;
-		}
-		table++;
-	}
-	if (!success) {
+	const struct lookup_entry_t *match = table_lookup(table, element);
+	if (match) {
+		*result = match->value;
+	} else {
 		logmsg(LLVL_ERROR, "'%s' is not a valid element for this type.", element);
 	}
+	return match;
+}
+
+bool keyvalue_flags(char *element, void *argument, void *vresult) {
+	const struct lookup_entry_t *table = (const struct lookup_entry_t *)argument;
+	if (!argument) {
+		logmsg(LLVL_FATAL, "Programming error: keyvalue_flags() requested, but no lookup table specified.");
+		return false;
+	}
+
+	struct stringlist_t list;
+	if (!parse_stringlist(&list, element, ":")) {
+		logmsg(LLVL_ERROR, "Could not parse list of items: %s", element);
+	}
+
+	uint32_t *result = (uint32_t*)vresult;
+	*result = 0;
+	bool success = true;
+	for (unsigned int i = 0; i < list.token_cnt; i++) {
+		const struct lookup_entry_t *match = table_lookup(table, list.tokens[i]);
+		if (!match) {
+			logmsg(LLVL_ERROR, "'%s' is not a valid element for this type.", list.tokens[i]);
+			success = false;
+			break;
+		}
+		*result |= match->value;
+	}
+
+	free_stringlist(&list);
 	return success;
 }
 
@@ -110,7 +140,6 @@ int parse_keyvalues_from_list(struct stringlist_t *list, unsigned int startindex
 
 	int successfully_parsed_cnt = 0;
 	for (unsigned int i = startindex; i < list->token_cnt; i++) {
-
 		/* First, tokenize */
 		char *saveptr = NULL;
 		char *key = strtok_r(list->tokens[i], "=", &saveptr);

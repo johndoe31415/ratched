@@ -28,6 +28,7 @@
 #include "openssl.h"
 #include "openssl_tls.h"
 #include "ocsp_response.h"
+#include "intercept_config.h"
 
 static long biocb(struct bio_st *bio, int oper, const char *argp, int len, long argi, long argl) {
 //	fprintf(stderr, "BIO %p: oper 0x%x argp %p len %d i/l %ld %ld\n", bio, oper, argp, len, argi, argl);
@@ -93,6 +94,15 @@ static int ocsp_status_request_callback(SSL *ssl, void *arg) {
 	return 0;
 }
 
+static void openssl_map_options(uint32_t tls_versions, long *clear_opts, long *set_opts) {
+	*((tls_versions & TLS_VERSION_SSL2) ? clear_opts : set_opts) |= SSL_OP_NO_SSLv2;
+	*((tls_versions & TLS_VERSION_SSL3) ? clear_opts : set_opts) |= SSL_OP_NO_SSLv3;
+	*((tls_versions & TLS_VERSION_TLS10) ? clear_opts : set_opts) |= SSL_OP_NO_TLSv1;
+	*((tls_versions & TLS_VERSION_TLS11) ? clear_opts : set_opts) |= SSL_OP_NO_TLSv1_1;
+	*((tls_versions & TLS_VERSION_TLS12) ? clear_opts : set_opts) |= SSL_OP_NO_TLSv1_2;
+	*((tls_versions & TLS_VERSION_TLS13) ? clear_opts : set_opts) |= SSL_OP_NO_TLSv1_3;
+}
+
 struct tls_connection_t openssl_tls_connect(const struct tls_connection_request_t *request) {
 	struct tls_connection_t result;
 	memset(&result, 0, sizeof(result));
@@ -103,10 +113,20 @@ struct tls_connection_t openssl_tls_connect(const struct tls_connection_request_
 		return result;
 	}
 
+
 	SSL_CTX *sslctx = SSL_CTX_new(method);
 	if (!sslctx) {
 		logmsgext(LLVL_ERROR, FLAG_OPENSSL_ERROR, "openssl_tls %s: SSL_CTX_new() failed.", request->is_server ? "server" : "client");
 		return result;
+	}
+
+	if (request->config) {
+		long clear_options = 0;
+		long set_options = 0;
+		openssl_map_options(request->config->tls_versions, &clear_options, &set_options);
+		SSL_CTX_set_options(sslctx, set_options);
+		long result_options = SSL_CTX_clear_options(sslctx, clear_options);
+		logmsg(LLVL_TRACE, "OpenSSL versions 0x%x, setting flags 0x%lx, clearing flags 0x%lx. Final value 0x%lx", request->config->tls_versions, set_options, clear_options, result_options);
 	}
 
 	/* Set verification callback for client certificates */

@@ -84,6 +84,7 @@ help_page += """
 The arguments which are valid for the --intercept argument are as follows:
 """
 help_page += format_arg_option("intercept=[opportunistic|mandatory|forward|reject]", "Specifies the mode that ratched should act in for this particular connection. Opportunistic TLS interception is the default; it means that TLS interception is tried first. Should it fail, however (because someone tries to send non-TLS traffic), it falls back to 'forward' mode (i.e., forwarding all data unmodified). Mandatory TLS interception means that if no TLS interception is possible, the connection is terminated. 'forward', as explained, simply forwards everything unmodified. 'reject' closes the connection altogether, regardless of the type of seen traffic.")
+help_page += format_arg_option("s_tlsversions=versions", "Colon-separated string that specifies the acceptable TLS version for the ratched server component. Valid elements are ssl2, ssl3, tls10, tls11, tls12, tls13. Defaults to tls10:tls11:tls12.")
 help_page += format_arg_option("s_reqclientcert=bool", "Ask all connecting clients to the server side of the TLS proxy for a client certificate. If not replacement certificate (at least certfile and keyfile) is given, forge all metadata of the incoming certificate. If a certfile/keyfile is given, this option is implied.")
 help_page += format_arg_option("s_certfile=filename", "Specifies an X.509 certificate in PEM format that should be used by ratched as the server certificate. By default, this certificate is automatically generated. Must be used in conjunction with s_keyfile.")
 help_page += format_arg_option("s_keyfile=filename", "Specifies the private key for the given server certificate, in PEM format.")
@@ -93,6 +94,7 @@ help_page += format_arg_option("s_cakey=filename", "The X.509 CA certificate key
 help_page += format_arg_option("s_ciphers=ciphers", "The cipher suite string that the ratched TLS server uses.")
 help_page += format_arg_option("s_groups=groups", "The key agreement 'supported groups' string (formerly known as 'elliptic curves') that the ratched TLS server uses.")
 help_page += format_arg_option("s_sigalgs=algs", "The key agreement 'signature algorithms' string which the ratched TLS server uses.")
+help_page += format_arg_option("c_tlsversions=versions", "Colon-separated string that specifies the acceptable TLS version for the ratched client component. Valid elements are ssl2, ssl3, tls10, tls11, tls12, tls13. Defaults to tls10:tls11:tls12.")
 help_page += format_arg_option("c_certfile=filename", "Specifies an X.509 certificate in PEM format that should be used by ratched as a client certificate. It will only be used when the connecting client also provided a client certificate. Must be used in conjunction with c_keyfile.")
 help_page += format_arg_option("c_keyfile=filename", "The private key for the given client certificate, in PEM format.")
 help_page += format_arg_option("c_chainfile=filename", "The X.509 certificate chain that is to be sent to the server, in PEM format.")

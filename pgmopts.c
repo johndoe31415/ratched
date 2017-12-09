@@ -178,6 +178,11 @@ void show_syntax(const char *pgmbinary) {
 	fprintf(stderr, "                        simply forwards everything unmodified. 'reject'\n");
 	fprintf(stderr, "                        closes the connection altogether, regardless of the\n");
 	fprintf(stderr, "                        type of seen traffic.\n");
+	fprintf(stderr, "  s_tlsversions=versions\n");
+	fprintf(stderr, "                        Colon-separated string that specifies the acceptable\n");
+	fprintf(stderr, "                        TLS version for the ratched server component. Valid\n");
+	fprintf(stderr, "                        elements are ssl2, ssl3, tls10, tls11, tls12, tls13.\n");
+	fprintf(stderr, "                        Defaults to tls10:tls11:tls12.\n");
 	fprintf(stderr, "  s_reqclientcert=bool  Ask all connecting clients to the server side of the\n");
 	fprintf(stderr, "                        TLS proxy for a client certificate. If not\n");
 	fprintf(stderr, "                        replacement certificate (at least certfile and\n");
@@ -204,6 +209,11 @@ void show_syntax(const char *pgmbinary) {
 	fprintf(stderr, "                        server uses.\n");
 	fprintf(stderr, "  s_sigalgs=algs        The key agreement 'signature algorithms' string which\n");
 	fprintf(stderr, "                        the ratched TLS server uses.\n");
+	fprintf(stderr, "  c_tlsversions=versions\n");
+	fprintf(stderr, "                        Colon-separated string that specifies the acceptable\n");
+	fprintf(stderr, "                        TLS version for the ratched client component. Valid\n");
+	fprintf(stderr, "                        elements are ssl2, ssl3, tls10, tls11, tls12, tls13.\n");
+	fprintf(stderr, "                        Defaults to tls10:tls11:tls12.\n");
 	fprintf(stderr, "  c_certfile=filename   Specifies an X.509 certificate in PEM format that\n");
 	fprintf(stderr, "                        should be used by ratched as a client certificate. It\n");
 	fprintf(stderr, "                        will only be used when the connecting client also\n");
@@ -503,6 +513,10 @@ bool parse_options(int argc, char **argv) {
 
 			case ARG_DEFAULTS_SHORT:
 			case ARG_DEFAULTS:
+				if (pgm_options_rw.default_config) {
+					snprintf(parsing_error, sizeof(parsing_error), "default configuration can only be supplied once");
+					return false;
+				}
 				pgm_options_rw.default_config = intercept_config_new(optarg, false);
 				if (!pgm_options_rw.default_config) {
 					return false;

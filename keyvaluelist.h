@@ -52,6 +52,7 @@ bool keyvalue_longint(char *element, void *argument, void *vresult);
 bool keyvalue_ipv4_nbo(char *element, void *argument, void *vresult);
 bool keyvalue_bool(char *element, void *argument, void *vresult);
 bool keyvalue_lookup(char *element, void *argument, void *vresult);
+bool keyvalue_flags(char *element, void *argument, void *vresult);
 int parse_keyvalues_from_list(struct stringlist_t *list, unsigned int startindex, struct keyvaluelist_def_t *elements);
 int parse_keyvalue_list(const char *string, unsigned int startindex, struct keyvaluelist_def_t *elements, char **positional_args);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
