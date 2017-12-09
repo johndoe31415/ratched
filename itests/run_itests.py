@@ -116,18 +116,20 @@ class RatchedIntegrationTests(unittest.TestCase):
 	def _assert_not_connected(self, srv_proc, cli_proc):
 		return self._assert_connection_state(srv_proc, cli_proc, False)
 
-	def _start_sserver(self, servername = "bar"):
+	def _start_sserver(self, servername = "bar", require_client = False):
 		cmd = [ "openssl", "s_server" ]
 		cmd += [ "-cert", self._test_ca_data_dir + "server_%s.crt" % (servername) ]
 		cmd += [ "-key", self._test_ca_data_dir + "server_%s.key" % (servername) ]
 		cmd += [ "-cert_chain", self._test_ca_data_dir + "intermediate.crt" ]
 		cmd += [ "-accept", "10000" ]
+		if require_client:
+			cmd += [ "-Verify", "5" ]
 #		cmd += [ "-debug" ]
 		srv = self._start_child(cmd).assert_running(self._TIMEOUTS["wait_sserver_ready"])
 		srv.read_until_data_recvd(timeout_secs = 5.0, expect_data = b"ACCEPT\n")
 		return srv
 
-	def _start_sclient(self, verify = False, include_trusted_ca = False, include_ratched_ca = False, port = 10000, servername = None, verify_hostname = False, startup_time = None):
+	def _start_sclient(self, verify = False, include_trusted_ca = False, include_ratched_ca = False, port = 10000, servername = None, verify_hostname = False, startup_time = None, client_cert = None):
 		cmd = [ "openssl", "s_client" ]
 		cmd += [ "-connect", "127.0.0.1:%d" % (port) ]
 		if verify:
@@ -144,7 +146,11 @@ class RatchedIntegrationTests(unittest.TestCase):
 				cmd += [ "-verify_hostname", servername ]
 			else:
 				cmd += [ "-verify_hostname", verify_hostname ]
-#		cmd += [ "-debug" ]
+		if client_cert is not None:
+			cmd += [ "-cert", client_cert[0], "-key", client_cert[1] ]
+			if len(client_cert) >= 3:
+				cmd += [ "-cert_chain", client_cert[2] ]
+		cmd += [ "-msg" ]
 		cli = self._start_child(cmd).assert_running(self._TIMEOUTS["wait_sclient_ready"])
 		cli.read_until_data_recvd(timeout_secs = 5.0, expect_data = b"---\n")
 		return cli
@@ -257,6 +263,45 @@ class RatchedIntegrationTests(unittest.TestCase):
 		ratched = self._start_ratched(args = [ "--intercept", "somehost,s_certfile=%sserver_foo.crt,s_keyfile=%sserver_foo.key,s_chainfile=%sintermediate.crt" % (self._test_ca_data_dir, self._test_ca_data_dir, self._test_ca_data_dir) ])
 		cli = self._start_sclient(verify = True, include_trusted_ca = True, port = 10001, servername = "somehost", verify_hostname = "foo")
 		self._assert_tls_works(srv, cli)
+		self._assert_tls_interception_works(srv, cli, ratched)
+
+	@debug_on_error
+	def test_ratched_request_client_cert_non_provided(self):
+		srv = self._start_sserver()
+		ratched = self._start_ratched(args = [ "--defaults", "s_reqclientcert=true" ])
+		cli = self._start_sclient(port = 10001)
+		self.assertIn(b"CertificateRequest", cli.stdout)
+		self._assert_tls_interception_works(srv, cli, ratched)
+
+	@debug_on_error
+	def test_request_client_cert_non_provided_server_needs_one(self):
+		srv = self._start_sserver(require_client = True)
+		with self.assertRaises(SubprocessException):
+			# Client cannot connect, server requires client cert
+			cli = self._start_sclient(port = 10000)
+
+	@debug_on_error
+	def test_ratched_request_client_cert_non_provided_server_needs_one(self):
+		srv = self._start_sserver(require_client = True)
+		ratched = self._start_ratched(args = [ "--defaults", "s_reqclientcert=true" ])
+		with self.assertRaises(SubprocessException):
+			# Client cannot connect, server requires client cert
+			cli = self._start_sclient(port = 10001)
+
+	@debug_on_error
+	def test_ratched_request_client_cert_used(self):
+		srv = self._start_sserver(require_client = True)
+		ratched = self._start_ratched(args = [ "--defaults", "s_reqclientcert=true" ])
+		cli = self._start_sclient(port = 10001, client_cert = [ "%sclient_joe.crt" % (self._test_ca_data_dir), "%sclient_joe.key" % (self._test_ca_data_dir), "%sclient_intermediate.crt" % (self._test_ca_data_dir) ])
+		self._assert_tls_works(srv, cli)
+
+	@debug_on_error
+	def test_ratched_request_client_cert_used_specific_cert(self):
+		srv = self._start_sserver(require_client = True)
+		ratched = self._start_ratched(args = [ "--defaults", "s_reqclientcert=true,c_certfile=%sclient_julaia.crt,c_keyfile=%sclient_julaia.key" % (self._test_ca_data_dir, self._test_ca_data_dir) ])
+		cli = self._start_sclient(port = 10001, client_cert = [ "%sclient_joe.crt" % (self._test_ca_data_dir), "%sclient_joe.key" % (self._test_ca_data_dir), "%sclient_intermediate.crt" % (self._test_ca_data_dir) ])
+		self._assert_tls_works(srv, cli)
+		self.assertIn(b"CN = julaia", srv.stdout)
 
 if __name__ == "__main__":
 	unittest.main()
