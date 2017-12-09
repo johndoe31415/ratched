@@ -224,22 +224,37 @@ struct map_element_t *strmap_set_int(struct map_t *map, const char *strkey, int 
 }
 
 bool strmap_has(struct map_t *map, const char *strkey) {
+	if (!strkey) {
+		return false;
+	}
 	return (map_getitem(map, strkey, strlen(strkey) + 1) != NULL);
 }
 
 void* strmap_get(struct map_t *map, const char *strkey) {
+	if (!strkey) {
+		return NULL;
+	}
 	return map_get(map, strkey, strlen(strkey) + 1);
 }
 
 const char* strmap_get_str(struct map_t *map, const char *strkey) {
+	if (!strkey) {
+		return NULL;
+	}
 	return (const char*)strmap_get(map, strkey);
 }
 
 int strmap_get_int(struct map_t *map, const char *strkey) {
+	if (!strkey) {
+		return -1;
+	}
 	return map_get_int(map, strkey, strlen(strkey) + 1);
 }
 
 void strmap_del(struct map_t *map, const char *strkey) {
+	if (!strkey) {
+		return;
+	}
 	map_del_key(map, strkey, strlen(strkey) + 1);
 }
 
