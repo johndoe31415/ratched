@@ -4,6 +4,10 @@ OBJS := \
 	atomic.o \
 	certforgery.o \
 	daemonize.o \
+	datafilter_bytewise.o \
+	datafilter_hexdump.o \
+	datafilter_http.o \
+	datafilter.o \
 	errstack.o \
 	hexdump.o \
 	hostname_ids.o \

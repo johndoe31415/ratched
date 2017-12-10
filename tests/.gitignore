@@ -1,5 +1,6 @@
 tests.log
 
+test_filter
 test_hostname_ids
 test_keyvaluelist
 test_map
