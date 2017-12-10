@@ -38,7 +38,6 @@
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
 int tcp_accept(uint16_t port_nbo);
 int tcp_connect(uint32_t ip_nbo, uint16_t port_nbo);
-void plain_forward_data(int fd1, int fd2);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif

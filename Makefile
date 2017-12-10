@@ -12,11 +12,11 @@ OBJS := \
 	ipfwd.o \
 	keyvaluelist.o \
 	logging.o \
-	ocsp_response.o \
 	map.o \
+	ocsp_response.o \
 	openssl_certs.o \
 	openssl_clienthello.o \
-	openssl_fwd.o \
+	openssl_filtered_fwd.o \
 	openssl.o \
 	openssl_tls.o \
 	parse.o \

@@ -38,7 +38,7 @@
 #include "openssl_clienthello.h"
 #include "openssl_tls.h"
 #include "openssl_certs.h"
-#include "openssl_fwd.h"
+#include "openssl_filtered_fwd.h"
 #include "server.h"
 #include "pgmopts.h"
 #include "logging.h"
@@ -110,7 +110,9 @@ static void start_plain_forwarding(const struct preliminary_data_t *preliminary_
 			logmsg(LLVL_WARN, "Preliminary data read was %zd bytes, but only %zd bytes written.", preliminary_data->data_length, bytes_written);
 		}
 	}
-	plain_forward_data(accepted_fd, connected_fd);
+
+	struct connection_stats_t stats;
+	filtered_fd_forward_data(accepted_fd, connected_fd, &stats, NULL);
 }
 
 static void log_tls_endpoint_config(enum loglvl_t loglvl, const char *description, const struct tls_endpoint_config_t *config) {
@@ -210,7 +212,8 @@ static void start_tls_forwarding(struct intercept_entry_t *decision, const struc
 		char comment[256];
 		snprintf(comment, sizeof(comment), "%zd bytes ClientHello, Server Name Indication %s, " PRI_IPv4 ":%u", preliminary_data->data_length, preliminary_data->parsed_data.server_name_indication ? preliminary_data->parsed_data.server_name_indication : "not present", FMT_IPv4(conn.acceptor.ip_nbo), ntohs(conn.acceptor.port_nbo));
 		create_tcp_ip_connection(ctx->mtdump, &conn, comment, pgm_options->pcapng.use_ipv6_encapsulation);
-		tls_forward_data(accepted_ssl.ssl, connected_ssl.ssl, &conn);
+		struct connection_stats_t stats;
+		filtered_tls_forward_data(accepted_ssl.ssl, connected_ssl.ssl, &stats, &conn);
 		teardown_tcp_ip_connection(&conn, false);
 		flush_tcp_ip_connection(&conn);
 	} else {

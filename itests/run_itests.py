@@ -48,6 +48,7 @@ class RatchedIntegrationTests(unittest.TestCase):
 		"cli_to_srv_msg":				0.2,
 		"wait_sserver_settle":			0.5,
 		"wait_after_sigterm":			0.5,
+		"wait_curl_finished":			5,
 	}
 	_TIMEOUTS = { key: value for (key, value) in _UNSCALED_TIMEOUTS.items() }
 
@@ -116,7 +117,7 @@ class RatchedIntegrationTests(unittest.TestCase):
 	def _assert_not_connected(self, srv_proc, cli_proc):
 		return self._assert_connection_state(srv_proc, cli_proc, False)
 
-	def _start_sserver(self, servername = "bar", require_client = False):
+	def _start_sserver(self, servername = "bar", require_client = False, webserver = False):
 		cmd = [ "openssl", "s_server" ]
 		cmd += [ "-cert", self._test_ca_data_dir + "server_%s.crt" % (servername) ]
 		cmd += [ "-key", self._test_ca_data_dir + "server_%s.key" % (servername) ]
@@ -124,6 +125,8 @@ class RatchedIntegrationTests(unittest.TestCase):
 		cmd += [ "-accept", "10000" ]
 		if require_client:
 			cmd += [ "-Verify", "5" ]
+		if webserver:
+			cmd += [ "-www" ]
 #		cmd += [ "-debug" ]
 		srv = self._start_child(cmd).assert_running(self._TIMEOUTS["wait_sserver_ready"])
 		srv.read_until_data_recvd(timeout_secs = 5.0, expect_data = b"ACCEPT\n")
@@ -165,6 +168,20 @@ class RatchedIntegrationTests(unittest.TestCase):
 			cmd += args
 		ratched = self._start_child(cmd).assert_running(self._TIMEOUTS["wait_ratched_ready"])
 		return ratched
+
+	def _start_curl(self, verify = False, port = 10001, trusted_ca = None):
+		cmd = [ "curl" ]
+		cmd += [ "-vvv" ]
+		cmd += [ "--noproxy", "127.0.0.1" ]
+		if not verify:
+			cmd += [ "--insecure" ]
+		if trusted_ca is not None:
+			cmd += [ "--cacert", trusted_ca ]
+		cmd += [ "https://127.0.0.1:%d" % (port) ]
+		curl = self._start_child(cmd)
+		curl.wait(self._TIMEOUTS["wait_curl_finished"])
+		curl.shutdown(self._TIMEOUTS["wait_curl_finished"])
+		return curl
 
 	def _assert_tls_works(self, srv, cli):
 		return self._assert_connected(srv, cli)
@@ -303,5 +320,46 @@ class RatchedIntegrationTests(unittest.TestCase):
 		self._assert_tls_works(srv, cli)
 		self.assertIn(b"CN = julaia", srv.stdout)
 
+	@debug_on_error
+	def test_sserver_curl(self):
+		srv = self._start_sserver(webserver = True)
+		cli = self._start_curl(port = 10000)
+		self.assertIn(b"Ciphers common between both SSL end points", cli.stdout)
+
+	@debug_on_error
+	def test_sserver_curl_requires_cert_1(self):
+		srv = self._start_sserver(webserver = True)
+		cli = self._start_curl(port = 10000, verify = True)
+		self.assertEqual(cli.status, 60)
+		self.assertNotIn(b"Ciphers common between both SSL end points", cli.stdout)
+
+	@debug_on_error
+	def test_sserver_curl_requires_cert_2(self):
+		srv = self._start_sserver(webserver = True)
+		cli = self._start_curl(port = 10000, verify = True, trusted_ca = "%sroot.crt" % (self._test_ca_data_dir))
+
+		# Servername doesn't match, but certificate verification works.
+		self.assertEqual(cli.status, 51)
+
+	@debug_on_error
+	def test_ratched_curl(self):
+		srv = self._start_sserver(webserver = True)
+		ratched = self._start_ratched()
+		cli = self._start_curl(port = 10001, verify = True, trusted_ca = "%sroot.crt" % (self._test_ratched_config_dir))
+		self.assertEqual(cli.status, 0)
+		self.assertIn(b"Ciphers common between both SSL end points", cli.stdout)
+
 if __name__ == "__main__":
-	unittest.main()
+	import sys
+	suite = unittest.TestSuite()
+	tests = RatchedIntegrationTests()
+
+	if len(sys.argv) == 1:
+		candidates = sorted(dir(RatchedIntegrationTests))
+	else:
+		candidates = sys.argv[1:]
+	for methodname in candidates:
+		if methodname.startswith("test_"):
+			suite.addTest(RatchedIntegrationTests(methodname))
+	unittest.TextTestRunner().run(suite)
+

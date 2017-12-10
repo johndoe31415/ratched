@@ -33,11 +33,6 @@
 #include "logging.h"
 #include "ipfwd.h"
 
-struct forwarding_data_t {
-	int read_fd;
-	int write_fd;
-};
-
 int tcp_accept(uint16_t port_nbo) {
 	int sd = socket(AF_INET, SOCK_STREAM, 0);
 	if (sd == -1) {
@@ -103,54 +98,4 @@ int tcp_connect(uint32_t ip_nbo, uint16_t port_nbo) {
 	}
 
 	return sd;
-}
-
-static void* forwarding_thread_fnc(void *vctx) {
-	struct forwarding_data_t *ctx = (struct forwarding_data_t*)vctx;
-	while (true) {
-		uint8_t data[4096];
-		ssize_t length_read = read(ctx->read_fd, data, sizeof(data));
-		if (length_read == 0) {
-			/* Peer closed connection */
-			break;
-		}
-		if (length_read <= 0) {
-			logmsg(LLVL_ERROR, "%zd bytes read when forwarding %d -> %d: %s", length_read, ctx->read_fd, ctx->write_fd, strerror(errno));
-			break;
-		}
-		ssize_t length_written = write(ctx->write_fd, data, length_read);
-		if (length_written != length_read) {
-			logmsg(LLVL_ERROR, "%zd bytes written when forwarding %d -> %d, %zd bytes expected: %s", length_written, ctx->read_fd, ctx->write_fd, length_read, strerror(errno));
-			break;
-		}
-	}
-	shutdown(ctx->read_fd, SHUT_RDWR);
-	shutdown(ctx->write_fd, SHUT_RDWR);
-	return NULL;
-}
-
-void plain_forward_data(int fd1, int fd2) {
-	struct forwarding_data_t dir1 = {
-		.read_fd = fd1,
-		.write_fd = fd2,
-	};
-	struct forwarding_data_t dir2 = {
-		.read_fd = fd2,
-		.write_fd = fd1,
-	};
-	pthread_t dir1_thread, dir2_thread;
-	if (pthread_create(&dir1_thread, NULL, forwarding_thread_fnc, &dir1)) {
-		logmsg(LLVL_ERROR, "Failed to create forwarding thread 1: %s", strerror(errno));
-		return;
-	}
-	if (pthread_create(&dir2_thread, NULL, forwarding_thread_fnc, &dir2)) {
-		logmsg(LLVL_ERROR, "Failed to create forwarding thread 2: %s", strerror(errno));
-		return;
-	}
-
-	/* Wait for both threads to finish */
-	pthread_join(dir1_thread, NULL);
-	pthread_join(dir2_thread, NULL);
-
-	logmsg(LLVL_INFO, "Closed plain forwarding between FDs %d <-> %d", fd1, fd2);
 }

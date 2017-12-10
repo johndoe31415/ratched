@@ -21,14 +21,52 @@
  *	Johannes Bauer <JohannesBauer@gmx.de>
 **/
 
-#ifndef __OPENSSL_FWD_H__
-#define __OPENSSL_FWD_H__
+#ifndef __OPENSSL_FILTERED_FWD_H__
+#define __OPENSSL_FILTERED_FWD_H__
 
 #include <openssl/ssl.h>
 #include "tcpip.h"
 
+struct connection_side_stats_t {
+	unsigned int bytes_read;
+	unsigned int bytes_written;
+};
+
+struct connection_stats_t {
+	struct connection_side_stats_t dir1;
+	struct connection_side_stats_t dir2;
+};
+
+enum fwd_direction_t {
+	READ_1_WRITE_2,
+	READ_2_WRITE_1,
+};
+
+union raw_connection_info_t {
+	struct {
+		SSL *side1, *side2;
+	} tls;
+	struct {
+		int side1, side2;
+	} fd;
+};
+
+struct forwarding_data_t {
+	BIO *side1, *side2;
+	struct connection_stats_t *stats;
+	struct connection_t *conn;
+	union raw_connection_info_t raw_connection_info;
+	void (*connection_shutdown_callback)(struct forwarding_data_t*);
+};
+
+struct forwarding_thread_data_t {
+	enum fwd_direction_t direction;
+	struct forwarding_data_t *fwd_data;
+};
+
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
-void tls_forward_data(SSL *ssl1, SSL *ssl2, struct connection_t *conn);
+void filtered_fd_forward_data(int fd1, int fd2, struct connection_stats_t *stats, struct connection_t *conn);
+void filtered_tls_forward_data(SSL *ssl1, SSL *ssl2, struct connection_stats_t *stats, struct connection_t *conn);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif
