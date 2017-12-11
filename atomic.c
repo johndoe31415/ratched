@@ -46,6 +46,18 @@ void atomic_set(struct atomic_t *atomic, int value) {
 	pthread_mutex_unlock(&atomic->mutex);
 }
 
+#include <stdio.h>
+bool atomic_test_and_set(struct atomic_t *atomic) {
+	bool result = false;
+	pthread_mutex_lock(&atomic->mutex);
+	if (atomic->value == 0) {
+		result = true;
+		atomic->value = 1;
+	}
+	pthread_mutex_unlock(&atomic->mutex);
+	return result;
+}
+
 void atomic_inc(struct atomic_t *atomic) {
 	return atomic_add(atomic, 1);
 }

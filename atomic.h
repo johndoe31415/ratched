@@ -24,6 +24,7 @@
 #ifndef __ATOMIC_H__
 #define __ATOMIC_H__
 
+#include <stdbool.h>
 #include <pthread.h>
 #include "errstack.h"
 
@@ -37,6 +38,7 @@ struct atomic_t {
 void atomic_init(struct atomic_t *atomic);
 void atomic_add(struct atomic_t *atomic, int value);
 void atomic_set(struct atomic_t *atomic, int value);
+bool atomic_test_and_set(struct atomic_t *atomic);
 void atomic_inc(struct atomic_t *atomic);
 void atomic_dec(struct atomic_t *atomic);
 void atomic_wait_until_value(struct atomic_t *atomic, int value);

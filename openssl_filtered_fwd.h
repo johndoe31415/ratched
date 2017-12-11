@@ -26,6 +26,7 @@
 
 #include <openssl/ssl.h>
 #include "tcpip.h"
+#include "atomic.h"
 
 struct connection_side_stats_t {
 	unsigned int bytes_read;
@@ -51,12 +52,15 @@ union raw_connection_info_t {
 	} fd;
 };
 
+struct forwarding_thread_data_t;
+
 struct forwarding_data_t {
 	BIO *side1, *side2;
 	struct connection_stats_t *stats;
 	struct connection_t *conn;
+	struct atomic_t shutdown;
 	union raw_connection_info_t raw_connection_info;
-	void (*connection_shutdown_callback)(struct forwarding_data_t*);
+	void (*connection_shutdown_callback)(struct forwarding_thread_data_t*);
 };
 
 struct forwarding_thread_data_t {

@@ -337,9 +337,7 @@ class RatchedIntegrationTests(unittest.TestCase):
 	def test_sserver_curl_requires_cert_2(self):
 		srv = self._start_sserver(webserver = True)
 		cli = self._start_curl(port = 10000, verify = True, trusted_ca = "%sroot.crt" % (self._test_ca_data_dir))
-
-		# Servername doesn't match, but certificate verification works.
-		self.assertEqual(cli.status, 51)
+		self.assertEqual(cli.status, 56)
 
 	@debug_on_error
 	def test_ratched_curl(self):

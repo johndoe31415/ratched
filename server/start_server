@@ -1,4 +1,14 @@
 #!/bin/bash
 #
 #
-openssl s_server -cert server_foo.crt -key server_foo.key -accept 9000 -msg -verify 2
+
+if [ "$1" == "" ]; then
+	ARGS=""
+elif [ "$1" == "www" ]; then
+	ARGS="-www"
+else
+	echo "Do not understand parameter: $1"
+	exit 1
+fi
+
+openssl s_server -cert server_foo.crt -key server_foo.key -accept 9000 -msg -verify 2 ${ARGS}

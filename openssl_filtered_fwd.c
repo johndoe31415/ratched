@@ -29,6 +29,7 @@
 
 #include "openssl_filtered_fwd.h"
 #include "logging.h"
+#include "atomic.h"
 
 static void* forwarding_thread_fnc(void *vctx) {
 	struct forwarding_thread_data_t *ctx = (struct forwarding_thread_data_t*)vctx;
@@ -70,7 +71,8 @@ static void* forwarding_thread_fnc(void *vctx) {
 		}
 		stats->bytes_written += length_written;
 	}
-	ctx->fwd_data->connection_shutdown_callback(ctx->fwd_data);
+	ctx->fwd_data->connection_shutdown_callback(ctx);
+	logmsg(LLVL_TRACE, "Thread %p -> %p (dir %d) finished.", read_bio, write_bio, ctx->direction);
 	return NULL;
 }
 
@@ -86,6 +88,7 @@ static void filtered_BIO_forward_data(struct forwarding_data_t *fwd_data, struct
 		.direction = READ_2_WRITE_1,
 		.fwd_data = fwd_data,
 	};
+	atomic_init(&fwd_data->shutdown);
 
 	pthread_t dir1_thread, dir2_thread;
 	if (pthread_create(&dir1_thread, NULL, forwarding_thread_fnc, &dir1)) {
@@ -104,9 +107,11 @@ static void filtered_BIO_forward_data(struct forwarding_data_t *fwd_data, struct
 	logmsg(LLVL_INFO, "Closed TLS forwarding %p <-> %p (forwarded %u bytes written to server, %u bytes written to client)", fwd_data->side1, fwd_data->side2, stats->dir1.bytes_written, stats->dir2.bytes_written);
 }
 
-static void fd_shutdown_callback(struct forwarding_data_t *fwddata) {
-	shutdown(fwddata->raw_connection_info.fd.side1, SHUT_RDWR);
-	shutdown(fwddata->raw_connection_info.fd.side2, SHUT_RDWR);
+static void fd_shutdown_callback(struct forwarding_thread_data_t *fwddata) {
+	if (atomic_test_and_set(&fwddata->fwd_data->shutdown)) {
+		shutdown(fwddata->fwd_data->raw_connection_info.fd.side1, SHUT_RDWR);
+		shutdown(fwddata->fwd_data->raw_connection_info.fd.side2, SHUT_RDWR);
+	}
 }
 
 void filtered_fd_forward_data(int fd1, int fd2, struct connection_stats_t *stats, struct connection_t *conn) {
@@ -138,9 +143,11 @@ void filtered_fd_forward_data(int fd1, int fd2, struct connection_stats_t *stats
 	BIO_free_all(fwd_data.side1);
 }
 
-static void ssl_shutdown_callback(struct forwarding_data_t *fwddata) {
-	SSL_shutdown(fwddata->raw_connection_info.tls.side1);
-	SSL_shutdown(fwddata->raw_connection_info.tls.side2);
+static void ssl_shutdown_callback(struct forwarding_thread_data_t *fwddata) {
+	if (atomic_test_and_set(&fwddata->fwd_data->shutdown)) {
+		SSL_shutdown(fwddata->fwd_data->raw_connection_info.tls.side1);
+		SSL_shutdown(fwddata->fwd_data->raw_connection_info.tls.side2);
+	}
 }
 
 void filtered_tls_forward_data(SSL *ssl1, SSL *ssl2, struct connection_stats_t *stats, struct connection_t *conn) {
