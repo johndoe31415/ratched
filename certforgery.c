@@ -26,6 +26,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <errno.h>
+#include <pthread.h>
 #include <openssl/evp.h>
 #include <openssl/x509.h>
 #include <openssl/pem.h>
@@ -193,6 +194,8 @@ X509 *forge_certificate_for_server(const char *hostname, uint32_t ipv4_nbo) {
 		memcpy(key + sizeof(uint32_t), hostname, hlen);
 	}
 
+	static pthread_mutex_t server_certifiates_mutex = PTHREAD_MUTEX_INITIALIZER;
+	pthread_mutex_lock(&server_certifiates_mutex);
 	X509 *certificate = map_get(server_certificates, key, keylen);
 	if (!certificate) {
 		if (hostname) {
@@ -234,6 +237,7 @@ X509 *forge_certificate_for_server(const char *hostname, uint32_t ipv4_nbo) {
 	if (certificate) {
 		X509_up_ref(certificate);
 	}
+	pthread_mutex_unlock(&server_certifiates_mutex);
 	return certificate;
 }
 
