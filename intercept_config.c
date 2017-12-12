@@ -62,6 +62,9 @@ struct intercept_config_t* intercept_config_new(const char *connection_params, b
 		return NULL;
 	}
 
+	/* Defaults */
+	config->server.ocsp_status = true;
+
 	const struct lookup_entry_t intercept_options[] = {
 		{ "o",				OPPORTUNISTIC_TLS_INTERCEPTION },
 		{ "oti",			OPPORTUNISTIC_TLS_INTERCEPTION },
@@ -97,6 +100,7 @@ struct intercept_config_t* intercept_config_new(const char *connection_params, b
 		{ .key = "s_ciphers", .parser = keyvalue_string, .target = &config->server.ciphersuites },
 		{ .key = "s_groups", .parser = keyvalue_string, .target = &config->server.supported_groups },
 		{ .key = "s_sigalgs", .parser = keyvalue_string, .target = &config->server.signature_algorithms },
+		{ .key = "s_ocsp", .parser = keyvalue_bool, .target = &config->server.ocsp_status },
 		{ .key = "c_tlsversions", .parser = keyvalue_flags, .target = &config->client.tls_versions, .argument = (void*)&tls_version_flags },
 		{ .key = "c_certfile", .parser = keyvalue_string, .target = &config->client.cert_filename },
 		{ .key = "c_keyfile", .parser = keyvalue_string, .target = &config->client.key_filename },

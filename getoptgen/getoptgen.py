@@ -94,6 +94,7 @@ help_page += format_arg_option("s_cakey=filename", "The X.509 CA certificate key
 help_page += format_arg_option("s_ciphers=ciphers", "The cipher suite string that the ratched TLS server uses.")
 help_page += format_arg_option("s_groups=groups", "The key agreement 'supported groups' string (formerly known as 'elliptic curves') that the ratched TLS server uses.")
 help_page += format_arg_option("s_sigalgs=algs", "The key agreement 'signature algorithms' string which the ratched TLS server uses.")
+help_page += format_arg_option("s_ocsp=bool", "Respond to clients requesting an OCSP status request by sending an OCSP ticket as a response. Enabled by default.")
 help_page += format_arg_option("c_tlsversions=versions", "Colon-separated string that specifies the acceptable TLS version for the ratched client component. Valid elements are ssl2, ssl3, tls10, tls11, tls12, tls13. Defaults to tls10:tls11:tls12.")
 help_page += format_arg_option("c_certfile=filename", "Specifies an X.509 certificate in PEM format that should be used by ratched as a client certificate. It will only be used when the connecting client also provided a client certificate. Must be used in conjunction with c_keyfile.")
 help_page += format_arg_option("c_keyfile=filename", "The private key for the given client certificate, in PEM format.")

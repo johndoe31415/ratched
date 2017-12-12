@@ -446,7 +446,7 @@ void dump_tls_endpoint_config(char *text, int text_maxlen, const struct tls_endp
 		buf = spnprintf(buf, &text_maxlen, "~%d", sk_X509_num(config->chain));
 	}
 	buf = spnprintf(buf, &text_maxlen, "], CA [%1s%1s], ", config->certificate_authority.cert ? "C" : "", config->certificate_authority.key ? "K" : "");
-	buf = spnprintf(buf, &text_maxlen, "Req=%d CS=%d SG=%d", config->request_cert_from_peer ? 1 : 0, config->ciphersuites ? 1 : 0, config->supported_groups ? 1 : 0);
+	buf = spnprintf(buf, &text_maxlen, "Req=%d OCSP=%d CS=%d SG=%d", config->request_cert_from_peer ? 1 : 0, config->ocsp_status ? 1 : 0, config->ciphersuites ? 1 : 0, config->supported_groups ? 1 : 0);
 }
 
 bool init_tls_endpoint_config(struct tls_endpoint_config_t *config, const char *description, const struct tls_endpoint_cert_source_t *certsrc) {

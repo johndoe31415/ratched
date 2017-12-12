@@ -45,6 +45,8 @@ struct intercept_entry_t* interceptdb_find_entry(const char *hostname, uint32_t 
 
 static void initialize_default_intercept_entry(struct intercept_entry_t *new_entry) {
 	new_entry->interception_mode = OPPORTUNISTIC_TLS_INTERCEPTION;
+	new_entry->server_template.ocsp_status = true;
+	new_entry->client_template.ocsp_status = true;
 	new_entry->server_template.tls_versions = TLS_VERSION_TLS10 | TLS_VERSION_TLS11 | TLS_VERSION_TLS12 | TLS_VERSION_TLS13;
 	new_entry->client_template.tls_versions = TLS_VERSION_TLS10 | TLS_VERSION_TLS11 | TLS_VERSION_TLS12 | TLS_VERSION_TLS13;
 }
@@ -70,6 +72,7 @@ static bool init_tls_intercept_entry(struct tls_endpoint_config_t *config, const
 		EVP_PKEY_up_ref(config->ocsp_responder.key);
 	}
 	config->request_cert_from_peer = side_config->request_client_cert;
+	config->ocsp_status = side_config->ocsp_status;
 	if (side_config->tls_versions != TLS_VERSION_UNDEFINED) {
 		config->tls_versions = side_config->tls_versions;
 	}

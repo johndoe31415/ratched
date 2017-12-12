@@ -201,6 +201,9 @@ The arguments which are valid for the --intercept argument are as follows:
                         server uses.
   s_sigalgs=algs        The key agreement 'signature algorithms' string which
                         the ratched TLS server uses.
+  s_ocsp=bool           Respond to clients requesting an OCSP status request
+                        by sending an OCSP ticket as a response. Enabled by
+                        default.
   c_tlsversions=versions
                         Colon-separated string that specifies the acceptable
                         TLS version for the ratched client component. Valid

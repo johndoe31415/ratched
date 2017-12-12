@@ -73,23 +73,32 @@ static int cert_verify_callback(X509_STORE_CTX *x509_store_ctx, void *arg) {
 
 static int ocsp_status_request_callback(SSL *ssl, void *arg) {
 	struct tls_endpoint_config_t *config = (struct tls_endpoint_config_t*)arg;
-	if (config->ocsp_responder.cert && config->ocsp_responder.key) {
-		OCSP_RESPONSE *response = create_ocsp_response(config->cert, config->ocsp_responder.cert, config->ocsp_responder.key);
-		if (response) {
-			uint8_t *serialized_ticket;
-			int serialized_ticket_length;
-			if (serialize_ocsp_response(response, &serialized_ticket, &serialized_ticket_length)) {
-				/* Ticket is cleaned up by SSL_free */
-				SSL_set_tlsext_status_ocsp_resp(ssl, serialized_ticket, serialized_ticket_length);
-			} else {
-				logmsg(LLVL_ERROR, "Failed to serialize OCSP ticket, not adding to SSL connection.");
-			}
-			OCSP_RESPONSE_free(response);
+	if (!config->ocsp_status) {
+		logmsg(LLVL_DEBUG, "Received status request by client, but OCSP responses are disabled.");
+		return 0;
+	}
+	if (!config->ocsp_responder.cert) {
+		logmsg(LLVL_DEBUG, "Received status request by client, but OCSP responder certificate in configuration.");
+		return 0;
+	}
+	if (!config->ocsp_responder.key) {
+		logmsg(LLVL_DEBUG, "Received status request by client, but OCSP responder key in configuration.");
+		return 0;
+	}
+
+	OCSP_RESPONSE *response = create_ocsp_response(config->cert, config->ocsp_responder.cert, config->ocsp_responder.key);
+	if (response) {
+		uint8_t *serialized_ticket;
+		int serialized_ticket_length;
+		if (serialize_ocsp_response(response, &serialized_ticket, &serialized_ticket_length)) {
+			/* Ticket is cleaned up by SSL_free */
+			SSL_set_tlsext_status_ocsp_resp(ssl, serialized_ticket, serialized_ticket_length);
 		} else {
-			logmsg(LLVL_DEBUG, "Received status request by client, but could not fake OCSP response.");
+			logmsg(LLVL_ERROR, "Failed to serialize OCSP ticket, not adding to SSL connection.");
 		}
+		OCSP_RESPONSE_free(response);
 	} else {
-		logmsg(LLVL_DEBUG, "Received status request by client, but no OCSP CA registered in connection.");
+		logmsg(LLVL_DEBUG, "Received status request by client, but could not fake OCSP response.");
 	}
 	return 0;
 }

@@ -338,17 +338,17 @@ class RatchedIntegrationTests(unittest.TestCase):
 		self.assertIn(b"Ciphers common between both SSL end points", cli.stdout)
 
 	@debug_on_error
-	def test_sserver_curl_requires_cert_1(self):
+	def test_sserver_curl_requires_cert_fails(self):
 		srv = self._start_sserver(webserver = True)
 		cli = self._start_curl(port = 10000, verify = True)
 		self.assertEqual(cli.status, 60)
 		self.assertNotIn(b"Ciphers common between both SSL end points", cli.stdout)
 
 	@debug_on_error
-	def test_sserver_curl_requires_cert_2(self):
+	def test_sserver_curl_requires_cert_works(self):
 		srv = self._start_sserver(webserver = True)
 		cli = self._start_curl(port = 10000, verify = True, trusted_ca = "%sroot.crt" % (self._test_ca_data_dir))
-		self.assertEqual(cli.status, 56)
+		self.assertEqual(cli.status, 0)
 
 	@debug_on_error
 	def test_ratched_curl(self):
@@ -369,7 +369,14 @@ class RatchedIntegrationTests(unittest.TestCase):
 		self.assertIn(b"The certificate is NOT trusted", cli.stdout)
 
 	@debug_on_error
-	def test_ratched_gnutls_requires_cert_works(self):
+	def test_ratched_gnutls_requires_cert_works_without_ocsp(self):
+		srv = self._start_sserver()
+		ratched = self._start_ratched([ "-d", "s_ocsp=false" ])
+		cli = self._start_gnutls_client(port = 10001, verify = True, trusted_ca = "%sroot.crt" % (self._test_ratched_config_dir))
+		self._assert_tls_interception_works(srv, cli, ratched)
+
+	@debug_on_error
+	def test_ratched_gnutls_requires_cert_works_with_ocsp(self):
 		srv = self._start_sserver()
 		ratched = self._start_ratched()
 		cli = self._start_gnutls_client(port = 10001, verify = True, trusted_ca = "%sroot.crt" % (self._test_ratched_config_dir))

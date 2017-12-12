@@ -209,6 +209,9 @@ void show_syntax(const char *pgmbinary) {
 	fprintf(stderr, "                        server uses.\n");
 	fprintf(stderr, "  s_sigalgs=algs        The key agreement 'signature algorithms' string which\n");
 	fprintf(stderr, "                        the ratched TLS server uses.\n");
+	fprintf(stderr, "  s_ocsp=bool           Respond to clients requesting an OCSP status request\n");
+	fprintf(stderr, "                        by sending an OCSP ticket as a response. Enabled by\n");
+	fprintf(stderr, "                        default.\n");
 	fprintf(stderr, "  c_tlsversions=versions\n");
 	fprintf(stderr, "                        Colon-separated string that specifies the acceptable\n");
 	fprintf(stderr, "                        TLS version for the ratched client component. Valid\n");
