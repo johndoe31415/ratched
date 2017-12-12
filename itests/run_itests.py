@@ -49,6 +49,7 @@ class RatchedIntegrationTests(unittest.TestCase):
 		"wait_sserver_settle":			0.5,
 		"wait_after_sigterm":			0.5,
 		"wait_curl_finished":			5,
+		"wait_gnutls_finished":			5,
 	}
 	_TIMEOUTS = { key: value for (key, value) in _UNSCALED_TIMEOUTS.items() }
 
@@ -182,6 +183,16 @@ class RatchedIntegrationTests(unittest.TestCase):
 		curl.wait(self._TIMEOUTS["wait_curl_finished"])
 		curl.shutdown(self._TIMEOUTS["wait_curl_finished"])
 		return curl
+
+	def _start_gnutls_client(self, verify = False, port = 10001, trusted_ca = None):
+		cmd = [ "gnutls-cli" ]
+		if not verify:
+			cmd += [ "--insecure" ]
+		if trusted_ca is not None:
+			cmd += [ "--x509cafile=%s" % (trusted_ca) ]
+		cmd += [ "--port=%d" % (port), "127.0.0.1" ]
+		gnutls = self._start_child(cmd)
+		return gnutls
 
 	def _assert_tls_works(self, srv, cli):
 		return self._assert_connected(srv, cli)
@@ -346,6 +357,23 @@ class RatchedIntegrationTests(unittest.TestCase):
 		cli = self._start_curl(port = 10001, verify = True, trusted_ca = "%sroot.crt" % (self._test_ratched_config_dir))
 		self.assertEqual(cli.status, 0)
 		self.assertIn(b"Ciphers common between both SSL end points", cli.stdout)
+
+	@debug_on_error
+	def test_ratched_gnutls_requires_cert(self):
+		srv = self._start_sserver()
+		ratched = self._start_ratched()
+		cli = self._start_gnutls_client(port = 10001, verify = True)
+		cli.wait(self._TIMEOUTS["wait_gnutls_finished"])
+		cli.shutdown(self._TIMEOUTS["wait_gnutls_finished"])
+		self.assertEqual(cli.status, 1)
+		self.assertIn(b"The certificate is NOT trusted", cli.stdout)
+
+	@debug_on_error
+	def test_ratched_gnutls_requires_cert_works(self):
+		srv = self._start_sserver()
+		ratched = self._start_ratched()
+		cli = self._start_gnutls_client(port = 10001, verify = True, trusted_ca = "%sroot.crt" % (self._test_ratched_config_dir))
+		self._assert_tls_interception_works(srv, cli, ratched)
 
 if __name__ == "__main__":
 	import sys
