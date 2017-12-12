@@ -90,6 +90,7 @@ static int ocsp_status_request_callback(SSL *ssl, void *arg) {
 	if (response) {
 		uint8_t *serialized_ticket;
 		int serialized_ticket_length;
+		log_ocsp_response(LLVL_TRACE, response, "Generated OCSP response");
 		if (serialize_ocsp_response(response, &serialized_ticket, &serialized_ticket_length)) {
 			/* Ticket is cleaned up by SSL_free */
 			SSL_set_tlsext_status_ocsp_resp(ssl, serialized_ticket, serialized_ticket_length);

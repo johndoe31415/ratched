@@ -1,4 +1,4 @@
-.PHONY: all clean test tests
+.PHONY: all clean test simpletest tests
 
 OBJS := \
 	atomic.o \
@@ -61,6 +61,9 @@ ratched: $(OBJS)
 
 test: ratched
 	ASAN_OPTIONS=fast_unwind_on_malloc=0 ./ratched -o output.pcapng -f 127.0.0.1:9000 -vvv --dump-certs --keyspec ecc:secp256r1 --pcap-comment "foo bar" -i moo,c_certfile=server/client_moo.crt,c_keyfile=server/client_moo.key,s_ciphers=AES128+HIGH+ECDHE -i koo,s_reqclientcert=true --mark-forged-certificates --crl-uri http://foo.com --ocsp-uri http://bar.com --use-ipv6-encapsulation --defaults s_tlsversions=tls10
+
+simpletest: ratched
+	./ratched -o output.pcapng -f 127.0.0.1:9000 -vvv --dump-certs
 
 tests:
 	make -C tests test

@@ -30,6 +30,7 @@
 #include <openssl/x509.h>
 #include <openssl/pem.h>
 #include <openssl/err.h>
+#include <openssl/ocsp.h>
 #include "logging.h"
 #include "pgmopts.h"
 #include "hexdump.h"
@@ -124,6 +125,14 @@ static void ext_log_callback(unsigned int flags, void *arg) {
 			X509 *cert = (X509*)arg;
 			PEM_write_X509(logfile, cert);
 		}
+		if ((flags & FLAG_OPENSSL_DUMP_OCSP_RESPONSE_PEM) && arg) {
+			BIO *bio = BIO_new_fp(logfile, BIO_NOCLOSE);
+			if (bio) {
+				OCSP_RESPONSE *ocsp_response = (OCSP_RESPONSE*)arg;
+				PEM_write_bio_OCSP_RESPONSE(bio, ocsp_response);
+				BIO_free(bio);
+			}
+		}
 	}
 }
 
@@ -211,3 +220,6 @@ void log_cert_src(enum loglvl_t lvl, const char *src_file, unsigned int src_line
 	logmsgarg_src(lvl, src_file, src_lineno, flags, crt, "%s", msg);
 }
 
+void log_ocsp_response_src(enum loglvl_t lvl, const char *src_file, unsigned int src_lineno, OCSP_RESPONSE *ocsp_response, const char *msg) {
+	logmsgarg_src(lvl, src_file, src_lineno, FLAG_OPENSSL_DUMP_OCSP_RESPONSE_PEM, ocsp_response, "%s", msg);
+}

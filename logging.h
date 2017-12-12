@@ -26,6 +26,7 @@
 
 #include <stdbool.h>
 #include <openssl/x509.h>
+#include <openssl/ocsp.h>
 
 enum loglvl_t {
 	LLVL_FATAL,
@@ -44,16 +45,17 @@ enum logflag_t {
 	FLAG_OPENSSL_DUMP_X509_CERT_SUBJECT = (1 << 3),
 	FLAG_OPENSSL_DUMP_X509_CERT_PEM = (1 << 4),
 	FLAG_OPENSSL_DUMP_X509_CERT_TEXT = (1 << 5),
+	FLAG_OPENSSL_DUMP_OCSP_RESPONSE_PEM = (1 << 6),
 };
 
 #define logmsg(lvl, msg, ...)							logmsg_src((lvl), __FILE__, __LINE__, (msg), ##__VA_ARGS__)
 #define logmsgext(lvl, flags, msg, ...)					logmsgext_src((lvl), __FILE__, __LINE__, (flags), (msg), ##__VA_ARGS__)
 #define logmsgarg(lvl, flags, arg, msg, ...)			logmsgext_src((lvl), __FILE__, __LINE__, (flags), (arg), (msg), ##__VA_ARGS__)
 #define log_cert(lvl, crt, msg)							log_cert_src((lvl), __FILE__, __LINE__, (crt), (msg))
+#define log_ocsp_response(lvl, orsp, msg)				log_ocsp_response_src((lvl), __FILE__, __LINE__, (orsp), (msg))
 #define log_memory(lvl, data, length, msg, ...)			log_memory_src((lvl), __FILE__, __LINE__, (data), (length), (msg), ##__VA_ARGS__)
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
-struct memdump_data_t;
 bool open_logfile(const char *filename);
 bool loglevel_at_least(enum loglvl_t lvl);
 void  __attribute__ ((format (printf, 4, 5))) logmsg_src(enum loglvl_t lvl, const char *src_file, unsigned int src_lineno, const char *msg, ...);
@@ -61,6 +63,7 @@ void  __attribute__ ((format (printf, 5, 6))) logmsgext_src(enum loglvl_t lvl, c
 void  __attribute__ ((format (printf, 6, 7))) logmsgarg_src(enum loglvl_t lvl, const char *src_file, unsigned int src_lineno, unsigned int flags, void *arg, const char *msg, ...);
 void  __attribute__ ((format (printf, 6, 7))) log_memory_src(enum loglvl_t lvl, const char *src_file, unsigned int src_lineno, const void *data, unsigned int length, const char *msg, ...);
 void log_cert_src(enum loglvl_t lvl, const char *src_file, unsigned int src_lineno, X509 *crt, const char *msg);
+void log_ocsp_response_src(enum loglvl_t lvl, const char *src_file, unsigned int src_lineno, OCSP_RESPONSE *ocsp_response, const char *msg);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif
