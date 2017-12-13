@@ -371,14 +371,14 @@ class RatchedIntegrationTests(unittest.TestCase):
 	@debug_on_error
 	def test_ratched_gnutls_requires_cert_works_without_ocsp(self):
 		srv = self._start_sserver()
-		ratched = self._start_ratched([ "-d", "s_ocsp=false" ])
+		ratched = self._start_ratched([ "-d", "s_send_rot=true,s_ocsp=false" ])
 		cli = self._start_gnutls_client(port = 10001, verify = True, trusted_ca = "%sroot.crt" % (self._test_ratched_config_dir))
 		self._assert_tls_interception_works(srv, cli, ratched)
 
 	@debug_on_error
 	def test_ratched_gnutls_requires_cert_works_with_ocsp(self):
 		srv = self._start_sserver()
-		ratched = self._start_ratched()
+		ratched = self._start_ratched([ "-d", "s_send_rot=true" ])
 		cli = self._start_gnutls_client(port = 10001, verify = True, trusted_ca = "%sroot.crt" % (self._test_ratched_config_dir))
 		self._assert_tls_interception_works(srv, cli, ratched)
 
