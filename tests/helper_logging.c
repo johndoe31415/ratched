@@ -49,5 +49,8 @@ void logmsgext_src(enum loglvl_t lvl, const char *src_file, unsigned int src_lin
 void log_cert_src(enum loglvl_t lvl, const char *src_file, unsigned int src_lineno, X509 *crt, const char *msg) {
 }
 
+void log_ocsp_response_src(enum loglvl_t lvl, const char *src_file, unsigned int src_lineno, OCSP_RESPONSE *ocsp_response, const char *msg) {
+}
+
 void log_memory_src(enum loglvl_t lvl, const char *src_file, unsigned int src_lineno, const void *data, unsigned int length, const char *msg, ...) {
 }
