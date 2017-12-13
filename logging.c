@@ -128,8 +128,8 @@ static void ext_log_callback(unsigned int flags, void *arg) {
 		if ((flags & FLAG_OPENSSL_DUMP_OCSP_RESPONSE_PEM) && arg) {
 			BIO *bio = BIO_new_fp(logfile, BIO_NOCLOSE);
 			if (bio) {
-				OCSP_RESPONSE *ocsp_response = (OCSP_RESPONSE*)arg;
-				PEM_write_bio_OCSP_RESPONSE(bio, ocsp_response);
+//				OCSP_RESPONSE *ocsp_response = (OCSP_RESPONSE*)arg;
+//				PEM_write_bio_OCSP_RESPONSE(bio, ocsp_response);
 				BIO_free(bio);
 			}
 		}
