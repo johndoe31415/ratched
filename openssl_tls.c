@@ -172,6 +172,18 @@ struct tls_connection_t openssl_tls_connect(const struct tls_connection_request_
 		}
 	}
 
+	if (request->config && request->config->include_root_ca_cert) {
+		if (request->config->certificate_authority.cert) {
+			if (!SSL_CTX_add_extra_chain_cert(sslctx, request->config->certificate_authority.cert)) {
+				logmsgext(LLVL_ERROR, FLAG_OPENSSL_ERROR, "openssl_tls %s: SSL_CTX_add_extra_chain_cert() failed.", request->is_server ? "server" : "client");
+				SSL_CTX_free(sslctx);
+				return result;
+			}
+		} else {
+			logmsg(LLVL_WARN, "openssl_tls %s: Requested to add root of trust, but no such certificate present in TLS configuration.", request->is_server ? "server" : "client");
+		}
+	}
+
 	if (request->config && request->config->ciphersuites) {
 		if (!SSL_CTX_set_cipher_list(sslctx, request->config->ciphersuites)) {
 			logmsgext(LLVL_ERROR, FLAG_OPENSSL_ERROR, "openssl_tls %s: SSL_CTX_set_cipher_list(%s) failed.", request->is_server ? "server" : "client", request->config->ciphersuites);

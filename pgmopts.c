@@ -189,6 +189,10 @@ void show_syntax(const char *pgmbinary) {
 	fprintf(stderr, "                        keyfile) is given, forge all metadata of the incoming\n");
 	fprintf(stderr, "                        certificate. If a certfile/keyfile is given, this\n");
 	fprintf(stderr, "                        option is implied.\n");
+	fprintf(stderr, "  s_send_rot=bool       By default, the ratched TLS server does not include\n");
+	fprintf(stderr, "                        its own root of trust (RoT) CA certificate in the\n");
+	fprintf(stderr, "                        server certificates list. With this option, it is\n");
+	fprintf(stderr, "                        added to the certificates sent to its peer.\n");
 	fprintf(stderr, "  s_certfile=filename   Specifies an X.509 certificate in PEM format that\n");
 	fprintf(stderr, "                        should be used by ratched as the server certificate.\n");
 	fprintf(stderr, "                        By default, this certificate is automatically\n");

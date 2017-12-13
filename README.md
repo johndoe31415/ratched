@@ -181,6 +181,10 @@ The arguments which are valid for the --intercept argument are as follows:
                         keyfile) is given, forge all metadata of the incoming
                         certificate. If a certfile/keyfile is given, this
                         option is implied.
+  s_send_rot=bool       By default, the ratched TLS server does not include
+                        its own root of trust (RoT) CA certificate in the
+                        server certificates list. With this option, it is
+                        added to the certificates sent to its peer.
   s_certfile=filename   Specifies an X.509 certificate in PEM format that
                         should be used by ratched as the server certificate.
                         By default, this certificate is automatically

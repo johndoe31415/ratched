@@ -92,6 +92,7 @@ struct intercept_config_t* intercept_config_new(const char *connection_params, b
 		{ .key = "intercept", .parser = keyvalue_lookup, .target = &config->interception_mode, .argument = (void*)&intercept_options },
 		{ .key = "s_tlsversions", .parser = keyvalue_flags, .target = &config->server.tls_versions, .argument = (void*)&tls_version_flags },
 		{ .key = "s_reqclientcert", .parser = keyvalue_bool, .target = &config->server.request_client_cert },
+		{ .key = "s_send_rot", .parser = keyvalue_bool, .target = &config->server.include_root_ca_cert },
 		{ .key = "s_certfile", .parser = keyvalue_string, .target = &config->server.cert_filename },
 		{ .key = "s_keyfile", .parser = keyvalue_string, .target = &config->server.key_filename },
 		{ .key = "s_chainfile", .parser = keyvalue_string, .target = &config->server.chain_filename },

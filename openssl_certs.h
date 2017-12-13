@@ -54,6 +54,7 @@ struct keyspec_t {
 struct tls_endpoint_config_t {
 	bool request_cert_from_peer;
 	bool ocsp_status;
+	bool include_root_ca_cert;
 	uint32_t tls_versions;
 	const char *ciphersuites;
 	const char *supported_groups;

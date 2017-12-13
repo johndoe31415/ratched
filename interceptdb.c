@@ -73,6 +73,7 @@ static bool init_tls_intercept_entry(struct tls_endpoint_config_t *config, const
 	}
 	config->request_cert_from_peer = side_config->request_client_cert;
 	config->ocsp_status = side_config->ocsp_status;
+	config->include_root_ca_cert = side_config->include_root_ca_cert;
 	if (side_config->tls_versions != TLS_VERSION_UNDEFINED) {
 		config->tls_versions = side_config->tls_versions;
 	}

@@ -49,6 +49,7 @@ struct intercept_side_config_t {
 	// Makes only sense for 'server', but easier this way.
 	bool request_client_cert;
 	bool ocsp_status;
+	bool include_root_ca_cert;
 	uint32_t tls_versions;
 
 	char *cert_filename;
