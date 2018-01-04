@@ -22,8 +22,6 @@
 **/
 
 #include <unistd.h>
-#include <openssl/x509.h>
-#include <openssl/ocsp.h>
 
 #include "atomic.h"
 #include "errstack.h"
