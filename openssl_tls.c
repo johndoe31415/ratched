@@ -86,7 +86,7 @@ static int ocsp_status_request_callback(SSL *ssl, void *arg) {
 		return 0;
 	}
 
-	OCSP_RESPONSE *response = create_ocsp_response(config->cert, config->ocsp_responder.cert, config->ocsp_responder.key);
+	OCSP_RESPONSE *response = create_ocsp_response(config->cert, config->ocsp_responder.cert, config->ocsp_responder.key, 14);
 	if (response) {
 		uint8_t *serialized_ticket;
 		int serialized_ticket_length;

@@ -26,7 +26,7 @@
 #include "logging.h"
 #include "openssl.h"
 
-OCSP_RESPONSE *create_ocsp_response(X509 *subject_crt, X509 *issuer_crt, EVP_PKEY *issuer_key) {
+OCSP_RESPONSE *create_ocsp_response(X509 *subject_crt, X509 *issuer_crt, EVP_PKEY *issuer_key, unsigned int ocsp_ticket_lifetime_days) {
 	struct errstack_t es = ERRSTACK_INIT;
 	OCSP_BASICRESP *basic_resp = errstack_push_OCSP_BASICRESP(&es, OCSP_BASICRESP_new());
 	if (!basic_resp) {
@@ -41,7 +41,7 @@ OCSP_RESPONSE *create_ocsp_response(X509 *subject_crt, X509 *issuer_crt, EVP_PKE
 		return errstack_pop_all(&es);
 	}
 
-	ASN1_TIME *nextupd = errstack_push_ASN1_TIME(&es, ASN1_TIME_adj(NULL, now, 14, 0));
+	ASN1_TIME *nextupd = errstack_push_ASN1_TIME(&es, ASN1_TIME_adj(NULL, now, ocsp_ticket_lifetime_days, 0));
 	if (!thisupd) {
 		logmsgext(LLVL_ERROR, FLAG_OPENSSL_ERROR, "Unable to create OCSP nextupd timestamp.");
 		return errstack_pop_all(&es);

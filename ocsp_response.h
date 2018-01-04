@@ -28,7 +28,7 @@
 #include <openssl/ocsp.h>
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
-OCSP_RESPONSE *create_ocsp_response(X509 *subject_crt, X509 *issuer_crt, EVP_PKEY *issuer_key);
+OCSP_RESPONSE *create_ocsp_response(X509 *subject_crt, X509 *issuer_crt, EVP_PKEY *issuer_key, unsigned int ocsp_ticket_lifetime_days);
 bool serialize_ocsp_response(OCSP_RESPONSE *ocsp_response, uint8_t **data, int *length);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
