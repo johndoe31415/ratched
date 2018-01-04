@@ -36,7 +36,7 @@ static void test_ocsp(void) {
 	test_assert(cert);
 	test_assert(key);
 
-	OCSP_RESPONSE *response = create_ocsp_response(cert, cert, key);
+	OCSP_RESPONSE *response = create_ocsp_response(cert, cert, key, 14);
 	test_assert(response);
 
 	if (response) {
