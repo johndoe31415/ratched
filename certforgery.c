@@ -37,6 +37,7 @@
 #include "ipfwd.h"
 #include "tools.h"
 #include "map.h"
+#include "openssl.h"
 
 #define MAX_PATH_LEN		1024
 

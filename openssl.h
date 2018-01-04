@@ -29,6 +29,11 @@
 #include <openssl/evp.h>
 #include <openssl/ocsp.h>
 #include <openssl/ssl.h>
+#include <openssl/opensslv.h>
+
+#if OPENSSL_VERSION_NUMBER < 0x010100000
+#error "Ratched requires at least OpenSSL v1.1 to work."
+#endif
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
 void openssl_init(void);

@@ -35,6 +35,7 @@
 #include <openssl/ssl.h>
 #include <openssl/x509.h>
 
+#include "openssl.h"
 #include "openssl_clienthello.h"
 #include "openssl_tls.h"
 #include "openssl_certs.h"

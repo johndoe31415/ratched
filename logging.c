@@ -34,6 +34,7 @@
 #include "logging.h"
 #include "pgmopts.h"
 #include "hexdump.h"
+#include "openssl.h"
 
 struct memdump_data_t {
 	const void *data;

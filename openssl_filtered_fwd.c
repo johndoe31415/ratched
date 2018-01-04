@@ -30,6 +30,7 @@
 #include "openssl_filtered_fwd.h"
 #include "logging.h"
 #include "atomic.h"
+#include "openssl.h"
 
 static void* forwarding_thread_fnc(void *vctx) {
 	struct forwarding_thread_data_t *ctx = (struct forwarding_thread_data_t*)vctx;
