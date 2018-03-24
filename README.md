@@ -284,7 +284,7 @@ to *increase* security of our infrastructure, not undermine it. TLS
 interception for spying purposes is despicable and dangerous.
 
 # Dependencies
-ratches requires at least OpenSSL v1.1.
+ratched requires at least OpenSSL v1.1.
 
 # License
 ratched is licensed under the GNU GPL-3.
