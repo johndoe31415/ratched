@@ -277,14 +277,15 @@ static void lookup_dump_wrap(const struct lookup_table_element_t *table, const c
 }
 
 void client_hello_dump_options(void) {
-	fprintf(stderr, "  %u client hello TLS extensions supported:\n", lookup_count(known_extensions));
-	lookup_dump_wrap(known_extensions, "    ");
-	fprintf(stderr, "  %u TLS content types supported:\n", lookup_count(known_content_types));
-	lookup_dump_wrap(known_content_types, "    ");
+	fprintf(stderr, "   %u client hello TLS extensions supported:\n", lookup_count(known_extensions));
+	lookup_dump_wrap(known_extensions, "      ");
+	fprintf(stderr, "   %u TLS content types supported:\n", lookup_count(known_content_types));
+	lookup_dump_wrap(known_content_types, "      ");
 #ifdef SSL_OP_NO_TLSv1_3
 	const bool have_tls13 = true;
 #else
 	const bool have_tls13 = false;
 #endif
-	fprintf(stderr, "  TLSv1.3 support: %s\n", have_tls13 ? "Yes" : "No");
+	fprintf(stderr, "   TLSv1.3 support: %s\n", have_tls13 ? "Yes" : "No");
+	fprintf(stderr, "   Compiled with: " OPENSSL_VERSION_TEXT "\n");
 }
