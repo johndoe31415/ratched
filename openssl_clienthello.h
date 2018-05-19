@@ -42,6 +42,7 @@ struct chello_t {
 bool parse_client_hello(struct chello_t *result, const uint8_t *data, int length);
 void free_client_hello(struct chello_t *chello);
 void errstack_push_client_hello(struct errstack_t *errstack, struct chello_t *element);
+void client_hello_dump_options(void);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif

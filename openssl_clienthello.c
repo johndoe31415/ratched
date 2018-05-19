@@ -244,3 +244,47 @@ static void errstack_free_client_hello(struct errstack_element_t *element) {
 void errstack_push_client_hello(struct errstack_t *errstack, struct chello_t *element) {
 	errstack_push_generic_nonnull_ptr(errstack, errstack_free_client_hello, element);
 }
+
+static unsigned int lookup_count(const struct lookup_table_element_t *table) {
+	unsigned int count = 0;
+	while (table->symbol) {
+		count++;
+		table++;
+	}
+	return count;
+}
+
+static void lookup_dump_wrap(const struct lookup_table_element_t *table, const char *indent) {
+	bool first = true;
+	int linelen = 0;
+	while (table->symbol) {
+		if (!first) {
+			fprintf(stderr, ", ");
+			linelen += 2;
+		} else {
+			fprintf(stderr, "%s", indent);
+			linelen += strlen(indent);
+			first = false;
+		}
+		if (linelen > 80) {
+			fprintf(stderr, "\n%s", indent);
+			linelen = strlen(indent);
+		}
+		linelen += fprintf(stderr, "%s", table->symbol);
+		table++;
+	}
+	fprintf(stderr, "\n");
+}
+
+void client_hello_dump_options(void) {
+	fprintf(stderr, "  %u client hello TLS extensions supported:\n", lookup_count(known_extensions));
+	lookup_dump_wrap(known_extensions, "    ");
+	fprintf(stderr, "  %u TLS content types supported:\n", lookup_count(known_content_types));
+	lookup_dump_wrap(known_content_types, "    ");
+#ifdef SSL_OP_NO_TLSv1_3
+	const bool have_tls13 = true;
+#else
+	const bool have_tls13 = false;
+#endif
+	fprintf(stderr, "  TLSv1.3 support: %s\n", have_tls13 ? "Yes" : "No");
+}

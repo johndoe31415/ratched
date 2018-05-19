@@ -35,6 +35,7 @@
 #include "keyvaluelist.h"
 #include "ipfwd.h"
 #include "intercept_config.h"
+#include "openssl_clienthello.h"
 
 static struct pgmopts_t pgm_options_rw = {
 	.log = {
@@ -282,6 +283,7 @@ void show_syntax(const char *pgmbinary) {
 	fprintf(stderr, "      unmodified forwarding.\n");
 	/* End of help page -- auto-generated, do not edit! */
 	fprintf(stderr, "\n");
+	client_hello_dump_options();
 	fprintf(stderr, "   version " BUILD_REVISION " built on " BUILD_TIMESTAMP_UTC " UTC\n");
 }
 
