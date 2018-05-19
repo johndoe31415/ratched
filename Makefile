@@ -49,7 +49,7 @@ ifneq ($(USER),travis)
 # sanitizers on Travis.
 CFLAGS += -pie -fPIE -fsanitize=address -fsanitize=undefined -fsanitize=leak -fno-omit-frame-pointer
 endif
-LDFLAGS := -L/usr/local/lib -lssl -lcrypto
+LDFLAGS := -I/usr/local/include -L/usr/local/lib -lssl -lcrypto
 
 all: ratched
 

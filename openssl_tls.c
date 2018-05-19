@@ -110,7 +110,9 @@ static void openssl_map_options(uint32_t tls_versions, long *clear_opts, long *s
 	*((tls_versions & TLS_VERSION_TLS10) ? clear_opts : set_opts) |= SSL_OP_NO_TLSv1;
 	*((tls_versions & TLS_VERSION_TLS11) ? clear_opts : set_opts) |= SSL_OP_NO_TLSv1_1;
 	*((tls_versions & TLS_VERSION_TLS12) ? clear_opts : set_opts) |= SSL_OP_NO_TLSv1_2;
+#ifdef SSL_OP_NO_TLSv1_3
 	*((tls_versions & TLS_VERSION_TLS13) ? clear_opts : set_opts) |= SSL_OP_NO_TLSv1_3;
+#endif
 }
 
 struct tls_connection_t openssl_tls_connect(const struct tls_connection_request_t *request) {

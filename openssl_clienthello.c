@@ -27,6 +27,7 @@
 #include <string.h>
 #include <errno.h>
 #include <openssl/ssl.h>
+#include <openssl/tls1.h>
 #include "logging.h"
 #include "openssl.h"
 #include "openssl_clienthello.h"
@@ -54,9 +55,13 @@ static struct lookup_table_element_t known_extensions[] = {
 	ELEMENT(TLSEXT_TYPE_client_authz),
 	ELEMENT(TLSEXT_TYPE_server_authz),
 	ELEMENT(TLSEXT_TYPE_cert_type),
+#ifdef TLSEXT_TYPE_supported_groups
 	ELEMENT(TLSEXT_TYPE_supported_groups),
+#endif
 	ELEMENT(TLSEXT_TYPE_ec_point_formats),
+#ifdef TLSEXT_TYPE_srp
 	ELEMENT(TLSEXT_TYPE_srp),
+#endif
 	ELEMENT(TLSEXT_TYPE_signature_algorithms),
 	ELEMENT(TLSEXT_TYPE_use_srtp),
 	ELEMENT(TLSEXT_TYPE_heartbeat),
@@ -66,13 +71,27 @@ static struct lookup_table_element_t known_extensions[] = {
 	ELEMENT(TLSEXT_TYPE_encrypt_then_mac),
 	ELEMENT(TLSEXT_TYPE_extended_master_secret),
 	ELEMENT(TLSEXT_TYPE_session_ticket),
+#ifdef TLSEXT_TYPE_key_share
 	ELEMENT(TLSEXT_TYPE_key_share),
+#endif
+#ifdef TLSEXT_TYPE_psk
 	ELEMENT(TLSEXT_TYPE_psk),
+#endif
+#ifdef TLSEXT_TYPE_early_data
 	ELEMENT(TLSEXT_TYPE_early_data),
+#endif
+#ifdef TLSEXT_TYPE_supported_versions
 	ELEMENT(TLSEXT_TYPE_supported_versions),
+#endif
+#ifdef TLSEXT_TYPE_cookie
 	ELEMENT(TLSEXT_TYPE_cookie),
+#endif
+#ifdef TLSEXT_TYPE_psk_kex_modes
 	ELEMENT(TLSEXT_TYPE_psk_kex_modes),
+#endif
+#ifdef TLSEXT_TYPE_certificate_authorities
 	ELEMENT(TLSEXT_TYPE_certificate_authorities),
+#endif
 	ELEMENT(TLSEXT_TYPE_renegotiate),
 	ELEMENT(TLSEXT_TYPE_next_proto_neg),
 	{ 0 }
