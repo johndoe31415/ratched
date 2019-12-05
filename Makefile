@@ -1,4 +1,4 @@
-.PHONY: all clean test simpletest tests
+.PHONY: all clean test simpletest tests install
 
 OBJS := \
 	atomic.o \
@@ -36,10 +36,15 @@ OBJS := \
 
 BUILD_TIMESTAMP_UTC := $(shell /bin/date +'%Y-%m-%d %H:%M:%S')
 BUILD_REVISION := $(shell git describe --abbrev=10 --dirty --always)
+DEBUG := 0
 
 CFLAGS := -O3 -Wall -D_DEFAULT_SOURCE -D_XOPEN_SOURCE=500 -Wno-unused-parameter -Wmissing-prototypes -Wstrict-prototypes -Werror=implicit-function-declaration -Werror=format -Wshadow -Wmaybe-uninitialized -Wuninitialized -std=c11 -pthread
 CFLAGS += -DBUILD_TIMESTAMP_UTC='"$(BUILD_TIMESTAMP_UTC)"' -DBUILD_REVISION='"$(BUILD_REVISION)"'
+LDFLAGS := -L/usr/local/lib -lssl -lcrypto
+
+ifeq ($(DEBUG),1)
 CFLAGS += -g3
+
 ifneq ($(USER),travis)
 # On Travis-CI, gcc does not support "undefined" and "leak" sanitizers.
 # Furthermore (and worse, actually), there seems to be a kernel < 4.12.8
@@ -49,7 +54,7 @@ ifneq ($(USER),travis)
 # sanitizers on Travis.
 CFLAGS += -pie -fPIE -fsanitize=address -fsanitize=undefined -fsanitize=leak -fno-omit-frame-pointer
 endif
-LDFLAGS := -I/usr/local/include -L/usr/local/lib -lssl -lcrypto
+endif
 
 all: ratched
 
@@ -67,3 +72,9 @@ simpletest: ratched
 
 tests:
 	make -C tests test
+
+install: all
+	strip ratched
+	chown root:root ratched
+	chmod 755 ratched
+	mv ratched /usr/local/bin

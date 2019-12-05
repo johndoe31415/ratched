@@ -64,7 +64,7 @@ static struct lookup_table_element_t known_extensions[] = {
 #endif
 	ELEMENT(TLSEXT_TYPE_signature_algorithms),
 	ELEMENT(TLSEXT_TYPE_use_srtp),
-	ELEMENT(TLSEXT_TYPE_heartbeat),
+	//ELEMENT(TLSEXT_TYPE_heartbeat),
 	ELEMENT(TLSEXT_TYPE_application_layer_protocol_negotiation),
 	ELEMENT(TLSEXT_TYPE_signed_certificate_timestamp),
 	ELEMENT(TLSEXT_TYPE_padding),
