@@ -43,14 +43,24 @@ capture. For example, to intercept everything from 192.168.1.7 that tries to
 reach port 443, use:
 
 ```
-iptables -t nat -A PREROUTING -p tcp -s 192.168.1.7 --dport 443 -j REDIRECT --to-ports 9999
+# iptables -t nat -A PREROUTING -p tcp -s 192.168.1.7 --dport 443 -j REDIRECT --to-ports 9999
 ```
 
 In order to intercept everything that goes to 443, simply do:
 
 ```
-iptables -t nat -A PREROUTING -p tcp --dport 443 -j REDIRECT --to-ports 9999
+# iptables -t nat -A PREROUTING -p tcp --dport 443 -j REDIRECT --to-ports 9999
 ```
+
+If you're acting as a router and want to intercept locally incoming traffic,
+use the DNAT target instead of REDIRECT, such as:
+
+```
+# iptables -t nat -A PREROUTING -i eth1 -p tcp --dport 443 -j DNAT --to 192.168.123.1:9999
+```
+
+Here, eth1 is the interface you're intercepting traffing at and 192.168.123.1
+is the local interface IP address.
 
 # Usage
 The help page should be pretty self-explanatory:
