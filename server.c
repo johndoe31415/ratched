@@ -343,26 +343,23 @@ bool start_forwarding(struct multithread_dumper_t *mtdump) {
 
 		struct sockaddr_in original_addr;
 		socklen = sizeof(client_addr);
-		if (getsockopt(connsd, SOL_IP, SO_ORIGINAL_DST, (struct sockaddr *)&original_addr, &socklen) == -1) {
-			logmsg(LLVL_ERROR, "Error determining original address for socket %d from " PRI_IPv4_PORT " and no local forwarding specified: %s", connsd, FMT_IPv4_PORT(client_addr), strerror(errno));
-			close(connsd);
-		} else {
-			bool start_client = true;
+		bool start_client = true;
+		if (getsockopt(connsd, SOL_IP, SO_ORIGINAL_DST, (struct sockaddr *)&original_addr, &socklen) != -1) {
+			/* Original destination is available, use it */
 			logmsg(LLVL_DEBUG, "Original connection with FD %d from " PRI_IPv4_PORT " tried to reach " PRI_IPv4_PORT ".", connsd, FMT_IPv4_PORT(client_addr), FMT_IPv4_PORT(original_addr));
-			if (ntohl(original_addr.sin_addr.s_addr) == IPv4ADDR(127, 0, 0, 1)) {
-				if (pgm_options->network.local_forwarding.ipv4_nbo != 0) {
-					original_addr.sin_addr.s_addr = pgm_options->network.local_forwarding.ipv4_nbo;
-					original_addr.sin_port = pgm_options->network.local_forwarding.port_nbo;
-					logmsg(LLVL_DEBUG, "Local connection detected, rerouting destination to " PRI_IPv4_PORT, FMT_IPv4_PORT(original_addr));
-				} else {
-					logmsg(LLVL_WARN, "Local connection detected, but no forwarding requested. Dropping connection.");
-					close(connsd);
-					start_client = false;
-				}
-			}
-			if (start_client) {
-				start_client_thread(mtdump, connsd, &client_addr, &original_addr);
-			}
+		} else if (pgm_options->network.local_forwarding.ipv4_nbo) {
+			/* Original destination unavailable (probably direct connection), forward locally */
+			original_addr.sin_addr.s_addr = pgm_options->network.local_forwarding.ipv4_nbo;
+			original_addr.sin_port = pgm_options->network.local_forwarding.port_nbo;
+			logmsg(LLVL_DEBUG, "Local connection detected, rerouting destination to " PRI_IPv4_PORT, FMT_IPv4_PORT(original_addr));
+		} else {
+			start_client = false;
+			close(connsd);
+			logmsg(LLVL_WARN, "Local connection detected, but no forwarding requested. Dropping connection.");
+		}
+
+		if (start_client) {
+			start_client_thread(mtdump, connsd, &client_addr, &original_addr);
 		}
 
 		if (pgm_options->operation.singleshot) {
