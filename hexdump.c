@@ -32,7 +32,7 @@ static const struct hexdump_fmt_t default_format = {
 };
 
 static void hexdump_data_left_col(FILE *f, const struct hexdump_fmt_t *fmt, const uint8_t *data, unsigned int length) {
-	for (int i = 0; i < fmt->bytes_per_line; i++) {
+	for (unsigned int i = 0; i < fmt->bytes_per_line; i++) {
 		if (i) {
 			if ((i % fmt->long_break) == 0) {
 				fprintf(f, "  ");
@@ -49,7 +49,7 @@ static void hexdump_data_left_col(FILE *f, const struct hexdump_fmt_t *fmt, cons
 }
 
 static void hexdump_data_right_col(FILE *f, const struct hexdump_fmt_t *fmt, const uint8_t *data, unsigned int length) {
-	for (int i = 0; i < fmt->bytes_per_line; i++) {
+	for (unsigned int i = 0; i < fmt->bytes_per_line; i++) {
 		if (i < length) {
 			char c = data[i];
 			if ((c > 32) && (c < 127)) {

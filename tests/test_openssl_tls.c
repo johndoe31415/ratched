@@ -42,7 +42,7 @@ struct test_ctx_t {
 	int initial_data_length;
 };
 
-static void tls_client_thread(void *arg) {
+static void * tls_client_thread(void *arg) {
 	struct test_ctx_t *ctx = (struct test_ctx_t*)arg;
 
 	struct tls_connection_request_t request = {
@@ -57,9 +57,11 @@ static void tls_client_thread(void *arg) {
 	SSL_free(ctx->client_conn.ssl);
 	close(ctx->sds[0]);
 	atomic_inc(&ctx->teardown);
+
+	return NULL;
 }
 
-static void tls_server_thread(void *arg) {
+static void * tls_server_thread(void *arg) {
 	struct test_ctx_t *ctx = (struct test_ctx_t*)arg;
 
 	struct tls_endpoint_config_t config = {
@@ -89,6 +91,8 @@ static void tls_server_thread(void *arg) {
 	EVP_PKEY_free(config.key);
 	close(ctx->sds[1]);
 	atomic_inc(&ctx->teardown);
+
+	return NULL;
 }
 
 static void urandom(uint8_t *data, int length) {

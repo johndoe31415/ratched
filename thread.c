@@ -24,7 +24,7 @@
 #include <pthread.h>
 #include "thread.h"
 
-bool start_detached_thread(void (*thread_fnc)(void*), void *argument) {
+bool start_detached_thread(void* (*thread_fnc)(void*), void *argument) {
 	pthread_t thread;
 	pthread_attr_t thread_attrs;
 	pthread_attr_init(&thread_attrs);

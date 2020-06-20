@@ -189,11 +189,11 @@ int parse_keyvalue_list(const char *string, unsigned int startindex, struct keyv
 	int result = parse_keyvalues_from_list(&list, startindex, elements);
 	if (positional_args) {
 		memset(positional_args, 0, sizeof(char*) * startindex);
-		for (int i = 0; i < startindex; i++) {
+		for (unsigned int i = 0; i < startindex; i++) {
 			positional_args[i] = strdup(list.tokens[i]);
 			if (!positional_args[i]) {
 				logmsg(LLVL_FATAL, "strdup(3) failed: %s", strerror(errno));
-				for (int j = 0; j < i; j++) {
+				for (unsigned int j = 0; j < i; j++) {
 					free(positional_args[j]);
 				}
 				free_stringlist(&list);

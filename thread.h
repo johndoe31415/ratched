@@ -27,7 +27,7 @@
 #include <stdbool.h>
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
-bool start_detached_thread(void (*thread_fnc)(void*), void *argument);
+bool start_detached_thread(void* (*thread_fnc)(void*), void *argument);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif
