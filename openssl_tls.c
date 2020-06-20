@@ -241,7 +241,7 @@ struct tls_connection_t openssl_tls_connect(const struct tls_connection_request_
 	if (request->initial_peer_data_length) {
 		/* Forwarding of preliminary data requested, do some buffer dance */
 		BIO *preliminary_data_bio = BIO_new(BIO_s_mem());
-		int bytes_written = BIO_write(preliminary_data_bio, request->initial_peer_data, request->initial_peer_data_length);
+		unsigned int bytes_written = BIO_write(preliminary_data_bio, request->initial_peer_data, request->initial_peer_data_length);
 		if (bytes_written != request->initial_peer_data_length) {
 			logmsgext(LLVL_WARN, FLAG_OPENSSL_ERROR, "openssl_tls %s: BIO_write() wrote %d bytes of initial data when %d would have been expected.", request->is_server ? "server" : "client", bytes_written, request->initial_peer_data_length);
 		}

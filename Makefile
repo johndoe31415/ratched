@@ -38,7 +38,7 @@ BUILD_TIMESTAMP_UTC := $(shell /bin/date +'%Y-%m-%d %H:%M:%S')
 BUILD_REVISION := $(shell git describe --abbrev=10 --dirty --always)
 DEBUG := 0
 
-CFLAGS := -O3 -Wall -D_DEFAULT_SOURCE -D_XOPEN_SOURCE=500 -Wno-unused-parameter -Wmissing-prototypes -Wstrict-prototypes -Werror=implicit-function-declaration -Werror=format -Wshadow -Wmaybe-uninitialized -Wuninitialized -std=c11 -pthread
+CFLAGS := -O3 -Wall -Wextra -D_DEFAULT_SOURCE -D_XOPEN_SOURCE=500 -Wno-unused-parameter -Wmissing-prototypes -Wstrict-prototypes -Werror=implicit-function-declaration -Werror=format -Wshadow -Wmaybe-uninitialized -Wuninitialized -std=c11 -pthread
 CFLAGS += -DBUILD_TIMESTAMP_UTC='"$(BUILD_TIMESTAMP_UTC)"' -DBUILD_REVISION='"$(BUILD_REVISION)"'
 LDFLAGS := -L/usr/local/lib -lssl -lcrypto
 

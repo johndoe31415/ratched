@@ -223,7 +223,7 @@ static void start_tls_forwarding(struct intercept_entry_t *decision, const struc
 	errstack_pop_all(&es);
 }
 
-static void client_thread_fnc(void *vctx) {
+static void * client_thread_fnc(void *vctx) {
 	struct client_thread_data_t *ctx = (struct client_thread_data_t*)vctx;
 	struct errstack_t es = ERRSTACK_INIT;
 	errstack_push_atomic_dec(&es, &active_client_connections);
@@ -236,7 +236,7 @@ static void client_thread_fnc(void *vctx) {
 		/* Connection to client failed. */
 		logmsg(LLVL_ERROR, "Outgoing connection to " PRI_IPv4_PORT " failed, closing accepted connection: %s", FMT_IPv4_PORT_TUPLE(ctx->destination_ip_nbo, ctx->destination_port_nbo), strerror(errno));
 		errstack_pop_all(&es);
-		return;
+		return NULL;
 	}
 
 	struct preliminary_data_t preliminary_data;
@@ -262,6 +262,8 @@ static void client_thread_fnc(void *vctx) {
 		logmsg(LLVL_FATAL, "Programming error: got interception mode 0x%x", decision->interception_mode);
 	}
 	errstack_pop_all(&es);
+
+	return NULL;
 }
 
 static void start_client_thread(struct multithread_dumper_t *mtdump, int accepted_sd, const struct sockaddr_in *source, const struct sockaddr_in *destination) {

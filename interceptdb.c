@@ -127,7 +127,7 @@ bool init_interceptdb(void) {
 	}
 
 	intercept_entry_by_hostname = map_new();
-	for (int i = 0; i < pgm_options->custom_configs->element_count; i++) {
+	for (unsigned int i = 0; i < pgm_options->custom_configs->element_count; i++) {
 		struct intercept_config_t *pgm_config = (struct intercept_config_t *)pgm_options->custom_configs->elements[i]->value.pointer;
 		struct map_element_t *new_map_entry = strmap_set_mem(intercept_entry_by_hostname, pgm_config->hostname, NULL, sizeof(struct intercept_entry_t));
 		if (!new_map_entry) {
