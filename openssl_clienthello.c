@@ -93,7 +93,9 @@ static struct lookup_table_element_t known_extensions[] = {
 	ELEMENT(TLSEXT_TYPE_certificate_authorities),
 #endif
 	ELEMENT(TLSEXT_TYPE_renegotiate),
+#ifndef OPENSSL_NO_NEXTPROTONEG
 	ELEMENT(TLSEXT_TYPE_next_proto_neg),
+#endif
 	{ 0 }
 };
 
