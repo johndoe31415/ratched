@@ -27,6 +27,7 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/bn.h>
+#include <openssl/rsa.h>
 #include <openssl/x509v3.h>
 
 #include "ipfwd.h"
@@ -280,8 +281,8 @@ X509* openssl_create_certificate(const struct certificatespec_t *spec) {
 	BN_free(serial);
 
 	/* Set lifetime */
-	X509_gmtime_adj(X509_get_notBefore(cert), -spec->validity_predate_seconds);
-	X509_gmtime_adj(X509_get_notAfter(cert), spec->validity_seconds);
+	X509_gmtime_adj(X509_getm_notBefore(cert), -spec->validity_predate_seconds);
+	X509_gmtime_adj(X509_getm_notAfter(cert), spec->validity_seconds);
 
 	/* Set public key */
 	X509_set_pubkey(cert, spec->subject_pubkey);
@@ -357,8 +358,8 @@ X509* openssl_create_certificate(const struct certificatespec_t *spec) {
 	return cert;
 }
 
-static bool is_certificate_expired(X509 *cert) {
-	return X509_cmp_current_time(X509_get_notAfter(cert)) <= 0;
+static bool is_certificate_expired(const X509 *cert) {
+	return X509_cmp_current_time(X509_get0_notAfter(cert)) <= 0;
 }
 
 X509* openssl_load_stored_certificate(const struct certificatespec_t *certspec, const char *filename, bool recreate_when_expired, bool recreate_when_key_mismatch) {
