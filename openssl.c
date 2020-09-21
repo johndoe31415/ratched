@@ -22,21 +22,17 @@
 **/
 
 #include <openssl/ssl.h>
+#include <openssl/bn.h>
+#include <openssl/rsa.h>
 #include <openssl/err.h>
 
 #include "openssl.h"
 #include "errstack.h"
 
 void openssl_init(void) {
-	SSL_load_error_strings();
-    OpenSSL_add_ssl_algorithms();
 }
 
 void openssl_deinit(void) {
-	EVP_cleanup();
-	CRYPTO_cleanup_all_ex_data();
-	SSL_COMP_free_compression_methods();
-	ERR_free_strings();
 }
 
 static void errstack_free_X509(struct errstack_element_t *element) {

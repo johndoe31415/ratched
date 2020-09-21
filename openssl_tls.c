@@ -146,11 +146,6 @@ struct tls_connection_t openssl_tls_connect(const struct tls_connection_request_
 		SSL_CTX_set_verify(sslctx, SSL_VERIFY_PEER, NULL);
 		SSL_CTX_set_cert_verify_callback(sslctx, cert_verify_callback, &result);
 	}
-	if (!SSL_CTX_set_ecdh_auto(sslctx, 1)) {
-		logmsgext(LLVL_ERROR, FLAG_OPENSSL_ERROR, "openssl_tls %s: SSL_CTX_set_ecdh_auto() failed.", request->is_server ? "server" : "client");
-		SSL_CTX_free(sslctx);
-		return result;
-	}
 
 	if (request->config && request->config->cert) {
 		if (SSL_CTX_use_certificate(sslctx, request->config->cert) != 1) {
