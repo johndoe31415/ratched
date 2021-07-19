@@ -1,5 +1,5 @@
 # ratched
-[![Build Status](https://travis-ci.org/johndoe31415/ratched.svg?branch=master)](https://travis-ci.org/johndoe31415/ratched)
+[![Build Status](https://travis-ci.com/johndoe31415/ratched.svg?branch=master)](https://travis-ci.com/johndoe31415/ratched)
 
 ratched is a Man-in-the-Middle (MitM) proxy that specifically intercepts TLS
 connections. It is intended to be used in conjunction with the Linux iptabes
